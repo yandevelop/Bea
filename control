@@ -1,0 +1,10 @@
+Package: com.yan.bea
+Name: Bea
+Version: 1.0
+Architecture: iphoneos-arm64
+Description: Lightweight BeReal. enhancement tweak.
+Maintainer: yan
+Author: yan
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000), firmware(>=14.0)
+Icon: https://yandevelop.github.io/assets/icons/bea/icon.png
