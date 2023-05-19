@@ -1,7 +1,7 @@
 Package: com.yan.bea
 Name: Bea
-Version: 1.1
-Architecture: iphoneos-arm64
+Version: 1.1.2
+Architecture: iphoneos-arm
 Description: Lightweight BeReal. enhancement tweak.
 Maintainer: yan
 Author: yan
