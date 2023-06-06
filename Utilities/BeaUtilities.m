@@ -5,8 +5,15 @@
 	UIButton *button = (UIButton *)sender;
 	UIView *tableContentView = button.superview.superview;
 	UIImageView *imageView = nil;
+
+    #ifdef LEGACY_SUPPORT
+        NSString *viewClass = @"BeReal.DoublePhotoView";
+    #else
+        NSString *viewClass = @"RealComponents.DoublePhotoView";
+    #endif
+
 	for (UIView *view in tableContentView.subviews) {
-		if ([NSStringFromClass([view class]) isEqualToString:@"RealComponents.DoublePhotoView"]) {
+		if ([NSStringFromClass([view class]) isEqualToString:viewClass]) {
 			imageView = view.subviews.firstObject;
 			break;
 		}
@@ -125,7 +132,7 @@
 }
 
 - (void)updateButtonTapped {
-    NSString *appStoreLink = @"https://apps.apple.com/de/app/id1459645446";
+    NSString *appStoreLink = @"https://apps.apple.com/app/id1459645446";
     NSURL *appStoreURL = [NSURL URLWithString:appStoreLink];
 
     if ([[UIApplication sharedApplication] canOpenURL:appStoreURL]) {
