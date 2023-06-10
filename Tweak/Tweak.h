@@ -5,5 +5,9 @@
 #import <rootless.h>
 
 BOOL isUnblurred = NO;
-
 NSString *authorizationKey = nil;
+Class photoView;
+
+@interface CAFilter : NSObject
+@property (copy) NSString * name;
+@end

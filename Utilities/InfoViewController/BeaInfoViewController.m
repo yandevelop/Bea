@@ -43,7 +43,8 @@
     self.versionLabel.textAlignment = NSTextAlignmentCenter;
     self.versionLabel.textColor = [UIColor whiteColor];
     self.versionLabel.font = [UIFont fontWithName:@"Inter" size:9];
-    self.versionLabel.text = @"Bea\nVersion 1.2";
+    NSString *headerText = [NSString stringWithFormat:@"Bea\nVersion %@", TWEAK_VERSION];
+    self.versionLabel.text = headerText;
     self.versionLabel.numberOfLines = 0;
     self.versionLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.versionLabel.translatesAutoresizingMaskIntoConstraints = NO;

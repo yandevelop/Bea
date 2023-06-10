@@ -1,6 +1,5 @@
 #import "Tweak.h"
 
-
 %hook DoublePhotoView
 - (void)layoutSubviews {
 	%orig;
@@ -18,58 +17,66 @@
 	}
 	UIViewController *vc = (UIViewController *)responder;
 	
-	if (![vc isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")]) return;
+	if (![vc isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && ![vc isKindOfClass:objc_getClass("BeReal.FeedViewController")]) return;
 
 	BeaButton *downloadButton = [BeaButton downloadButton];
 	[doublePhotoView addSubview:downloadButton];
-	downloadButton.translatesAutoresizingMaskIntoConstraints = NO;
+
 	[NSLayoutConstraint activateConstraints:@[
 		[downloadButton.trailingAnchor constraintEqualToAnchor:doublePhotoView.trailingAnchor constant:-11.6],
 		[downloadButton.bottomAnchor constraintEqualToAnchor:doublePhotoView.topAnchor constant:47.333]
 	]];
 }
+
+- (void)onMainImagePressed:(UILongPressGestureRecognizer *)gestureRecognizer {
+	%orig;
+    [BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+}
+
+
+- (void)handleMainPanned:(UIPinchGestureRecognizer *)gestureRecognizer {
+	%orig;
+
+	[BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+}
+
+- (void)handleMainPinched:(UIPinchGestureRecognizer *)gestureRecognizer {
+	%orig;
+	[BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+}
 %end
 
-%hook UIAlertController
-- (void)viewDidLoad {
-	%orig;
-	if (isUnblurred) return;
 
-	UIAlertController *alertController = (UIAlertController *)self;
+%hook UIAlertController
+- (void)viewWillAppear:(id)arg1 {
+	%orig;
+    if (isUnblurred) return;
 	
-	if ([alertController.actions[2].title isEqual:@"👀 Unblur"]) {
+    UIAlertController *alertController = (UIAlertController *)self;
+    if ([alertController.actions[2].title isEqual:@"👀 Unblur"]) {
+		// Set the whole view to hidden
+        self.view.superview.hidden = YES;
 		UIAlertAction *thirdAction = alertController.actions[2];
 		id block = [thirdAction valueForKey:@"_handler"];
 		if (block) {
 			void (^handler)(UIAlertAction *) = block;
 			handler(thirdAction);
-		}	
-	}
-}
-
-- (void)viewWillAppear:(id)arg1 {
-	%orig;
-	if (isUnblurred) return;
-	UIAlertController *alertController = (UIAlertController *)self;
-	if ([alertController.actions[2].title isEqual:@"👀 Unblur"]) {
-		// Set the whole view to hidden
-		self.view.superview.hidden = YES;
-		
+		}
 		isUnblurred = YES;
-
-		// Dismiss the UIAlertController
-		[self dismissViewControllerAnimated:NO completion:nil];
-	}
+		// Dismiss the UIAlertController automatically
+        [self dismissViewControllerAnimated:NO completion:nil];
+    }
 }
 %end
 
+
 %hook HomeViewController
 - (void)viewDidLoad {
-    %orig;
+	%orig;
 
 	UIViewController *homeViewController = (UIViewController *)self;
 
-	if (!isUnblurred && [homeViewController respondsToSelector:@selector(openDebugMenu)] && [homeViewController.childViewControllers.lastObject isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")]) {
+	if (!isUnblurred && [homeViewController respondsToSelector:@selector(openDebugMenu)]) {
 		[homeViewController performSelector:@selector(openDebugMenu)];
 		#ifndef LEGACY_SUPPORT
 			NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
@@ -112,6 +119,7 @@
 	UIViewController *vc = (UIViewController *)self;
 	// display the error view here
 	if (!authorizationKey) return;
+
 	BeaUploadViewController *beaUploadViewController = [[BeaUploadViewController alloc] initWithAuthorization:authorizationKey];
 	beaUploadViewController.modalPresentationStyle = UIModalPresentationFullScreen;
 	[vc presentViewController:beaUploadViewController animated:YES completion:nil];
@@ -119,12 +127,17 @@
 %end
 
 
-%hook CALayer
-- (void)setFilters:(NSArray *)filter {
-	if (!isUnblurred) return;
-	%orig;
+%hook CAFilter
+-(void)setValue:(id)arg1 forKey:(id)arg2 {
+    // remove the blur that gets applied to the BeReals
+	// this is kind of a fallback if the normal unblur function somehow fails
+	if ([arg1 isEqual:@(13)] && [self.name isEqual:@"gaussianBlur"]) {
+		return %orig(0, arg2);
+	}
+    %orig;
 }
 %end
+
 
 %hook SettingsViewController
 - (void)viewDidLoad {
@@ -134,7 +147,8 @@
 	UITableView *labelView = vc.view.subviews.firstObject;
 	
 	UILabel *headerLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, labelView.frame.size.width, 50)];
-	headerLabel.text = @"Bea 1.2\nmade with ❤️ by yan";
+	NSString *headerText = [NSString stringWithFormat:@"Bea %@\nmade with ❤️ by yan", TWEAK_VERSION];
+	headerLabel.text = headerText;
 	headerLabel.numberOfLines = 0;
 	headerLabel.font = [UIFont fontWithName:@"Inter" size:10];
 	headerLabel.textAlignment = NSTextAlignmentCenter;
@@ -142,11 +156,13 @@
 }
 %end
 
+
 %hook UIScreen
 - (BOOL)isCaptured {
 	return NO;
 }
 %end
+
 
 %hook NSNotificationCenter
 - (void)addObserver:(id)arg0 selector:(SEL)arg1 name:(NSNotificationName)arg2 object:(id)arg3 {
@@ -160,14 +176,17 @@
 // return a nil string so the BeReal photo view is clear :)
 %hook NSBundle
 - (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName {
-    if ([self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
-        if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"]) {
+	
+	// since BeReal 1.4 the bundleIdentifier seems to have changed. Keeping both for backwards compatibility
+	if ([self.bundleIdentifier isEqualToString:@"Localisation-Localisation-resources"] || [self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
+        if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"] || [key isEqualToString:@"timelineCell_blurredView_description_discoveryGlobal"]) {
             return nil;
         }
 	}
     return %orig;
 }
 %end
+
 
 %hook NSMutableURLRequest
 -(void)setAllHTTPHeaderFields:(NSDictionary *)arg1 {
@@ -177,6 +196,7 @@
 	}
 }
 %end
+
 
 %hook UIHostingView
 - (void)layoutSubviews {
@@ -190,11 +210,12 @@
 }
 %end
 
+
 %ctor {
 	#ifdef LEGACY_SUPPORT
-		Class photoView = objc_getClass("BeReal.DoublePhotoView");
+		photoView = objc_getClass("BeReal.DoublePhotoView");
 	#else
-		Class photoView = objc_getClass("RealComponents.DoublePhotoView");
+		photoView = objc_getClass("RealComponents.DoublePhotoView");
 	#endif
 
 	%init(HomeViewController = objc_getClass("_TtC6BeReal18HomeViewController"),

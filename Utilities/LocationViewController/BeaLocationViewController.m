@@ -42,7 +42,7 @@
         [self.userLocationButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:20.0],
         [self.userLocationButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
         [self.userLocationButton.widthAnchor constraintEqualToConstant:44.0],
-        [self.userLocationButton.heightAnchor constraintEqualToConstant:44.0],
+        [self.userLocationButton.heightAnchor constraintEqualToConstant:44.0]
     ]];
 }
 

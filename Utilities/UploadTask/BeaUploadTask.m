@@ -19,6 +19,14 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
 }
 
 - (UIImage *)resizeImage:(UIImage *)image toSize:(CGSize)size {
+    CGFloat aspectRatio = image.size.width / image.size.height;
+    CGFloat targetRatio = size.width / size.height;
+    CGFloat deviation = fabs(aspectRatio - targetRatio);
+
+    if (deviation > 0.2) {
+        size = CGSizeMake(size.width, size.width / aspectRatio);
+    }
+
     UIGraphicsBeginImageContextWithOptions(size, NO, image.scale);
     [image drawInRect:CGRectMake(0, 0, size.width, size.height)];
     UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
@@ -48,7 +56,7 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
 
 - (void)uploadBeRealWithCompletion:(void (^)(BOOL success, NSError *error))completion {
 
-    [self getLastMoment];
+    [self getRegion];
 
     // create the first request
     NSURL *uploadRequestURL = [NSURL URLWithString:@"https://mobile.bereal.com/api/content/posts/upload-url?mimeType=image/webp"];
@@ -142,14 +150,11 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
 }
 
 - (void)postBeRealWithFrontPath:(NSString *)frontPath backPath:(NSString *)backPath frontBucket:(NSString *)frontBucket backBucket:(NSString *)backBucket completion:(void (^)(BOOL success, NSError *error))completion {
-    NSDate *currentDate = [NSDate date];
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
     [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSSXXX"];
     [dateFormatter setLocale:[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"]];
 
-    if ([self.userDictionary[@"isLate"] boolValue]) {
-        self.takenAt = [dateFormatter stringFromDate:currentDate];
-    } else {
+    if (![self.userDictionary[@"isLate"] boolValue] && self.lastMoment) {
         // randomize the taken at to be between the startDate and endDate because its
         // logically impossible to "post" on the start time
         NSDate *moment = [dateFormatter dateFromString:self.lastMoment];
@@ -157,6 +162,9 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
         NSDate *dateInRange = [moment dateByAddingTimeInterval:randomSeconds];
         NSString *dateString = [dateFormatter stringFromDate:dateInRange];
         self.takenAt = dateString;
+    } else {
+        NSDate *currentDate = [NSDate date];
+        self.takenAt = [dateFormatter stringFromDate:currentDate];
     }
 
     NSMutableDictionary *payload = [NSMutableDictionary dictionaryWithDictionary:@{
@@ -166,14 +174,14 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
         @"takenAt": self.takenAt,
         @"backCamera": @{
             @"bucket": backBucket,
-            @"height": @1500,
-            @"width": @2000,
+            @"height": @2000,
+            @"width": @1500,
             @"path": backPath
         },
         @"frontCamera": @{
             @"bucket": frontBucket,
-            @"height": @1500,
-            @"width": @2000,
+            @"height": @2000,
+            @"width": @1500,
             @"path": frontPath
         }
     }];
@@ -201,7 +209,6 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     [postBeRealRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
     [postBeRealRequest setValue:@"en-US" forHTTPHeaderField:@"bereal-app-language"];
 
-    
     NSURLSessionUploadTask *uploadTask = [[NSURLSession sharedSession] uploadTaskWithRequest:postBeRealRequest fromData:payloadJSON completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
         if (error || httpResponse.statusCode > 299) {
@@ -220,13 +227,40 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     [uploadTask resume];
 }
 
+- (void)getRegion {
+    NSURL *meURL = [NSURL URLWithString:@"https://mobile.bereal.com/api/person/me"];
+
+    NSMutableURLRequest *regionRequest = [NSMutableURLRequest requestWithURL:meURL];
+
+    [regionRequest setHTTPMethod:@"GET"];
+    [regionRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
+    [regionRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
+    [regionRequest setValue:@"BeReal/0.28.2 (AlexisBarreyat.BeReal; build:8425; iOS 14.7.1) 1.0.0/BRApiKit" forHTTPHeaderField:@"User-Agent"];
+
+    NSURLSession *session = [NSURLSession sharedSession];
+    NSURLSessionDataTask *regionRequestTask = [session dataTaskWithRequest:regionRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+        if (error || httpResponse.statusCode != 200) {
+            return;
+        } else {
+            NSDictionary *response = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            self.region = response[@"region"];
+            [self getLastMoment];
+        }    
+    }];
+
+    [regionRequestTask resume];
+}
+
 - (void)getLastMoment {
     NSURL *lastMomentURL = [NSURL URLWithString:@"https://mobile.bereal.com/api/bereal/moments/last/"];
+    lastMomentURL = [lastMomentURL URLByAppendingPathComponent:self.region];
 
     NSMutableURLRequest *lastMomentRequest = [NSMutableURLRequest requestWithURL:lastMomentURL];
     [lastMomentRequest setHTTPMethod:@"GET"];
     [lastMomentRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
     [lastMomentRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
+    [lastMomentRequest setValue:@"BeReal/0.28.2 (AlexisBarreyat.BeReal; build:8425; iOS 14.7.1) 1.0.0/BRApiKit" forHTTPHeaderField:@"User-Agent"];
 
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *lastMomentRequestTask = [session dataTaskWithRequest:lastMomentRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -238,6 +272,7 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
             self.lastMoment = lastMomentResponse[@"startDate"];
         }    
     }];
+
     [lastMomentRequestTask resume];
 }
 @end
