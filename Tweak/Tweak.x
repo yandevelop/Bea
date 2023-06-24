@@ -10,6 +10,7 @@
 
 	// make the view accept touches (dragging photos etc)
 	doublePhotoView.superview.userInteractionEnabled = YES;
+	doublePhotoView.superview.superview.userInteractionEnabled = YES;
 
 	UIResponder *responder = self;
 	while (responder && ![responder isKindOfClass:[UIViewController class]]) {
@@ -36,7 +37,6 @@
 
 - (void)handleMainPanned:(UIPinchGestureRecognizer *)gestureRecognizer {
 	%orig;
-
 	[BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
 }
 
@@ -77,7 +77,7 @@
 	UIViewController *homeViewController = (UIViewController *)self;
 
 	if (!isUnblurred && [homeViewController respondsToSelector:@selector(openDebugMenu)]) {
-		[homeViewController performSelector:@selector(openDebugMenu)];
+		//[homeViewController performSelector:@selector(openDebugMenu)];
 		#ifndef LEGACY_SUPPORT
 			NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
 			NSComparisonResult result = [version compare:@"1.1.2" options:NSNumericSearch];
@@ -210,6 +210,15 @@
 }
 %end
 
+
+%hook UIPageViewController
+- (void)viewWillAppear:(id)arg1 {
+	%orig;
+	if ([self.viewControllers.firstObject isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && [self.parentViewController isKindOfClass:objc_getClass("BeReal.HomeViewController")] && !isUnblurred) {
+		[self.parentViewController performSelector:@selector(openDebugMenu)];
+	}
+}
+%end
 
 %ctor {
 	#ifdef LEGACY_SUPPORT

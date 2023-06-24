@@ -78,10 +78,11 @@
     BeaButton *downloadButton = view.subviews.lastObject;
 
     if ((gestureRecognizer.numberOfTouches < 2 && [gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) || gestureRecognizer.state == 3) {
+        if (gestureRecognizer.state == 2) return;
         [UIView animateWithDuration:0.2 animations:^{
             downloadButton.alpha = 1;
         }];
-    } else if (gestureRecognizer.state == 1 || gestureRecognizer.state == 2) {
+    } else if ((gestureRecognizer.state == 1 || gestureRecognizer.state == 2)) {
         [UIView animateWithDuration:0.2 animations:^{
             downloadButton.alpha = 0;
         }];

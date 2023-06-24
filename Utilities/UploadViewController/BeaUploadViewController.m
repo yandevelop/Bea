@@ -256,18 +256,14 @@
     NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/yandevelop/Bea/releases/latest"];
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *dataTask = [session dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        if (error) {
-            NSLog(@"Error occurred while fetching latest version: %@", error.localizedDescription);
-        } else {
+        if (!error) {
             NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
             NSString *latestVersion = json[@"tag_name"];
+        
             if ([currentVersion compare:latestVersion options:NSNumericSearch] == NSOrderedAscending) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Update Available"
-                                                                                                message:@"A new version of Bea is available.\nDo you want to update now?"
-                                                                                        preferredStyle:UIAlertControllerStyleAlert];
+                    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Update Available" message:@"A new version of Bea is available.\nDo you want to update now?" preferredStyle:UIAlertControllerStyleAlert];
                     [alertController addAction:[UIAlertAction actionWithTitle:@"Update" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-                        // Open App Store for the update
                         NSURL *githubURL = [NSURL URLWithString:@"https://github.com/yandevelop/Bea/releases/latest"];
                         if ([[UIApplication sharedApplication] canOpenURL:githubURL]) {
                             [[UIApplication sharedApplication] openURL:githubURL options:@{} completionHandler:nil];

@@ -23,7 +23,7 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     CGFloat targetRatio = size.width / size.height;
     CGFloat deviation = fabs(aspectRatio - targetRatio);
 
-    if (deviation > 0.2) {
+    if (deviation > 0.1) {
         size = CGSizeMake(size.width, size.width / aspectRatio);
     }
 
