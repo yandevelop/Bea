@@ -12,7 +12,6 @@ Compatible with all iOS devices running iOS 14 or later.
     - Set a custom retake count
     - Add what you're currently playing or add a song
   - Download BeReals
-  - Bypass screenshot detection
 
 ## Build  
   1. Install latest [Theos](https://theos.dev)
