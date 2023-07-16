@@ -38,7 +38,19 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     self = [super init];
     if (self) {
         self.userDictionary = data;
-        self.authorizationKey = data[@"authorization"];
+        self.authorizationKey = [[BeaTokenManager sharedInstance] BRAccessToken];
+
+        self.headers = @{
+            @"authorization": self.authorizationKey,
+            @"accept": @"*/*",
+            @"bereal-platform": @"iOS",
+            @"bereal-os-version": @"14.7.1",
+            @"accept-Language": @"en-US;q=1.0",
+            @"user-Agent": @"BeReal/1.7.0 (AlexisBarreyat.BeReal; build:11001; iOS 14.7.1) 1.0.0/BRApiKit",
+            @"bereal-app-language": @"en-US",
+            @"bereal-device-language": @"en",
+            @"bereal-app-version" : @"1.7.0-(11001)"
+        };
 
         UIImage *resizedFrontImage = [self resizeImage:frontImage toSize:CGSizeMake(1500, 2000)];
         UIImage *resizedBackImage = [self resizeImage:backImage toSize:CGSizeMake(1500, 2000)];
@@ -62,14 +74,10 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     NSURL *uploadRequestURL = [NSURL URLWithString:@"https://mobile.bereal.com/api/content/posts/upload-url?mimeType=image/webp"];
     NSMutableURLRequest *uploadRequest = [NSMutableURLRequest requestWithURL:uploadRequestURL];
     [uploadRequest setHTTPMethod:@"GET"];
-    [uploadRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
-    [uploadRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
-    [uploadRequest setValue:@"iOS" forHTTPHeaderField:@"bereal-platform"];
-    [uploadRequest setValue:@"14.7.1" forHTTPHeaderField:@"bereal-os-version"];
-    [uploadRequest setValue:@"en-US;q=1.0" forHTTPHeaderField:@"Accept-Language"];
-    [uploadRequest setValue:@"BeReal/0.28.2 (AlexisBarreyat.BeReal; build:8425; iOS 14.7.1) 1.0.0/BRApiKit" forHTTPHeaderField:@"User-Agent"];
-    [uploadRequest setValue:@"en-US" forHTTPHeaderField:@"bereal-app-language"];
-    [uploadRequest setValue:@"en" forHTTPHeaderField:@"bereal-device-language"];
+
+    [self.headers enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, BOOL *stop) {
+        [uploadRequest setValue:value forHTTPHeaderField:field];
+    }];
 
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *uploadRequestTask = [session dataTaskWithRequest:uploadRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *getError) {
@@ -121,7 +129,6 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
         }
         dispatch_group_leave(group);
     }];
-
     
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         [self postBeRealWithFrontPath:frontImageUploadPath backPath:backImageUploadPath frontBucket:frontImageBucket backBucket:backImageBucket completion:completion];
@@ -166,7 +173,7 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
         NSDate *currentDate = [NSDate date];
         self.takenAt = [dateFormatter stringFromDate:currentDate];
     }
-
+    
     NSMutableDictionary *payload = [NSMutableDictionary dictionaryWithDictionary:@{
         @"visibility": @[@"friends"],
         @"isLate": @([self.userDictionary[@"isLate"] boolValue]),
@@ -186,6 +193,10 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
         }
     }];
 
+    if (self.userDictionary[@"music"]) {
+        [payload setObject:self.userDictionary[@"music"] forKey:@"music"];
+    }
+
     if (self.userDictionary[@"longitude"] && self.userDictionary[@"latitude"]) {
         NSDictionary *locationDict = @{
             @"latitude": self.userDictionary[@"latitude"],
@@ -204,16 +215,18 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     NSMutableURLRequest *postBeRealRequest = [NSMutableURLRequest requestWithURL:postBeRealURL];
 
     [postBeRealRequest setHTTPMethod:@"POST"];
+
     [postBeRealRequest setValue:@"application/json" forHTTPHeaderField:@"content-type"];
-    [postBeRealRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
-    [postBeRealRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
-    [postBeRealRequest setValue:@"en-US" forHTTPHeaderField:@"bereal-app-language"];
+    [self.headers enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, BOOL *stop) {
+        [postBeRealRequest setValue:value forHTTPHeaderField:field];
+    }];
 
     NSURLSessionUploadTask *uploadTask = [[NSURLSession sharedSession] uploadTaskWithRequest:postBeRealRequest fromData:payloadJSON completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
         if (error || httpResponse.statusCode > 299) {
             NSDictionary *responseDictionary = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-            NSString *message = [NSString stringWithFormat:@"1 - Uploading failed: %@: %@", responseDictionary[@"statusCode"], responseDictionary[@"errorKey"]];
+            //NSString *message = [NSString stringWithFormat:@"1 - Uploading failed: %@: %@", responseDictionary[@"statusCode"], responseDictionary[@"errorKey"]];
+            NSString *message = [NSString stringWithFormat:@"%@, %@, %@", responseDictionary[@"error"], responseDictionary[@"message"], responseDictionary[@"errorKey"]];
             [self handleErrorWithTitle:@"API Error" message:message completion:completion];
             return;
         }
@@ -231,11 +244,10 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     NSURL *meURL = [NSURL URLWithString:@"https://mobile.bereal.com/api/person/me"];
 
     NSMutableURLRequest *regionRequest = [NSMutableURLRequest requestWithURL:meURL];
-
-    [regionRequest setHTTPMethod:@"GET"];
-    [regionRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
-    [regionRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
-    [regionRequest setValue:@"BeReal/0.28.2 (AlexisBarreyat.BeReal; build:8425; iOS 14.7.1) 1.0.0/BRApiKit" forHTTPHeaderField:@"User-Agent"];
+    
+    [self.headers enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, BOOL *stop) {
+        [regionRequest setValue:value forHTTPHeaderField:field];
+    }];
 
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *regionRequestTask = [session dataTaskWithRequest:regionRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -258,9 +270,10 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
 
     NSMutableURLRequest *lastMomentRequest = [NSMutableURLRequest requestWithURL:lastMomentURL];
     [lastMomentRequest setHTTPMethod:@"GET"];
-    [lastMomentRequest setValue:self.authorizationKey forHTTPHeaderField:@"Authorization"];
-    [lastMomentRequest setValue:@"*/*" forHTTPHeaderField:@"Accept"];
-    [lastMomentRequest setValue:@"BeReal/0.28.2 (AlexisBarreyat.BeReal; build:8425; iOS 14.7.1) 1.0.0/BRApiKit" forHTTPHeaderField:@"User-Agent"];
+
+    [self.headers enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, BOOL *stop) {
+        [lastMomentRequest setValue:value forHTTPHeaderField:field];
+    }];
 
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *lastMomentRequestTask = [session dataTaskWithRequest:lastMomentRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {

@@ -1,48 +1,51 @@
 #import "Tweak.h"
 
 %hook DoublePhotoView
-- (void)layoutSubviews {
+%property (nonatomic, strong) BeaButton *downloadButton;
+
+- (void)drawRect:(CGRect)rect {
 	%orig;
 
-	UIView *doublePhotoView = (UIView *)self;
-
-	if ([doublePhotoView.subviews.lastObject isKindOfClass:[BeaButton class]] || doublePhotoView.frame.size.width < 180) return;
-
-	// make the view accept touches (dragging photos etc)
-	doublePhotoView.superview.userInteractionEnabled = YES;
-	doublePhotoView.superview.superview.userInteractionEnabled = YES;
-
 	UIResponder *responder = self;
-	while (responder && ![responder isKindOfClass:[UIViewController class]]) {
-		responder = [responder nextResponder];
-	}
-	UIViewController *vc = (UIViewController *)responder;
-	
-	if (![vc isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && ![vc isKindOfClass:objc_getClass("BeReal.FeedViewController")]) return;
+    while (responder && ![responder isKindOfClass:[UIViewController class]]) {
+        responder = [responder nextResponder];
+    }
+    UIViewController *vc = (UIViewController *)responder;
+    
+    if ((![vc isKindOfClass:NSClassFromString(@"BeReal.SUIFeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.FeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.MemoryDetailsViewController")]) || CGRectGetWidth([self frame]) < 180) return;
+    
+    if ([self downloadButton]) return;
 
-	BeaButton *downloadButton = [BeaButton downloadButton];
-	[doublePhotoView addSubview:downloadButton];
+
+	[[self superview] setUserInteractionEnabled:YES];
+	[[[self superview] superview] setUserInteractionEnabled:YES];
+
+    BeaButton *downloadButton = [BeaButton downloadButton];
+    downloadButton.layer.zPosition = 3;
+
+    [self setDownloadButton:downloadButton];
+    [self addSubview:downloadButton];
 
 	[NSLayoutConstraint activateConstraints:@[
-		[downloadButton.trailingAnchor constraintEqualToAnchor:doublePhotoView.trailingAnchor constant:-11.6],
-		[downloadButton.bottomAnchor constraintEqualToAnchor:doublePhotoView.topAnchor constant:47.333]
+		[[[self downloadButton] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-11.6],
+		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
 	]];
 }
 
+
 - (void)onMainImagePressed:(UILongPressGestureRecognizer *)gestureRecognizer {
 	%orig;
-    [BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+    [[self downloadButton] toggleVisibilityWithGestureRecognizer:gestureRecognizer];
 }
-
 
 - (void)handleMainPanned:(UIPinchGestureRecognizer *)gestureRecognizer {
 	%orig;
-	[BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+	[[self downloadButton] toggleVisibilityWithGestureRecognizer:gestureRecognizer];
 }
 
 - (void)handleMainPinched:(UIPinchGestureRecognizer *)gestureRecognizer {
 	%orig;
-	[BeaButton toggleDownloadButtonVisibility:self gestureRecognizer:gestureRecognizer];
+	[[self downloadButton] toggleVisibilityWithGestureRecognizer:gestureRecognizer];
 }
 %end
 
@@ -52,15 +55,16 @@
 	%orig;
     if (isUnblurred) return;
 	
-    UIAlertController *alertController = (UIAlertController *)self;
-    if ([alertController.actions[2].title isEqual:@"👀 Unblur"]) {
+    if ([self.actions[2].title isEqual:@"👀 Unblur"]) {
 		// Set the whole view to hidden
         self.view.superview.hidden = YES;
-		UIAlertAction *thirdAction = alertController.actions[2];
+		UIAlertAction *thirdAction = self.actions[2];
 		id block = [thirdAction valueForKey:@"_handler"];
 		if (block) {
-			void (^handler)(UIAlertAction *) = block;
-			handler(thirdAction);
+			dispatch_async(dispatch_get_main_queue(), ^{
+				void (^handler)(UIAlertAction *) = block;
+				handler(thirdAction);
+			});
 		}
 		isUnblurred = YES;
 		// Dismiss the UIAlertController automatically
@@ -69,27 +73,21 @@
 }
 %end
 
-
 %hook HomeViewController
 - (void)viewDidLoad {
 	%orig;
 
-	UIViewController *homeViewController = (UIViewController *)self;
-
-	if (!isUnblurred && [homeViewController respondsToSelector:@selector(openDebugMenu)]) {
+	if (!isUnblurred && [self respondsToSelector:@selector(openDebugMenu)]) {
 		//[homeViewController performSelector:@selector(openDebugMenu)];
 		#ifndef LEGACY_SUPPORT
 			NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
 			NSComparisonResult result = [version compare:@"1.1.2" options:NSNumericSearch];
 			if (result == NSOrderedAscending) { 
 				BeaAlertView *alertView = [[BeaAlertView alloc] init];
-				[homeViewController.view addSubview:alertView];
+				[[self view] addSubview:alertView];
 			}
 		#endif
 	}
-
-	UIImageView *beRealLogoView = [self valueForKey:@"ibNavBarLogoImageView"];
-	beRealLogoView.userInteractionEnabled = YES;
 
 	#ifdef JAILED
 		NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"Bea" ofType:@"bundle"];
@@ -100,29 +98,28 @@
 		UIImage *beFakeLogo = [UIImage imageNamed:@"BeFake.png" inBundle:bundle compatibleWithTraitCollection:nil];
 	#endif
 
-	CGSize targetSize = beRealLogoView.image.size;
+	CGSize targetSize = [[[self ibNavBarLogoImageView] image] size];
 
 	UIGraphicsBeginImageContextWithOptions(targetSize, NO, 0);
 	[beFakeLogo drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
 	UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
 	UIGraphicsEndImageContext();
 
-	beRealLogoView.image = resizedImage;
-
 	UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
-	[beRealLogoView addGestureRecognizer:tapGestureRecognizer];
+	
+	[[self ibNavBarLogoImageView] addGestureRecognizer:tapGestureRecognizer];
+	[[self ibNavBarLogoImageView] setImage:resizedImage];
+	[[self ibNavBarLogoImageView] setUserInteractionEnabled:YES];
 }
 
 %new
 - (void)handleTap:(UITapGestureRecognizer *)gestureRecognizer {
-
-	UIViewController *vc = (UIViewController *)self;
 	// display the error view here
 	if (!authorizationKey) return;
 
-	BeaUploadViewController *beaUploadViewController = [[BeaUploadViewController alloc] initWithAuthorization:authorizationKey];
+	BeaUploadViewController *beaUploadViewController = [[BeaUploadViewController alloc] init];
 	beaUploadViewController.modalPresentationStyle = UIModalPresentationFullScreen;
-	[vc presentViewController:beaUploadViewController animated:YES completion:nil];
+	[self presentViewController:beaUploadViewController animated:YES completion:nil];
 }
 %end
 
@@ -138,21 +135,18 @@
 }
 %end
 
-
 %hook SettingsViewController
 - (void)viewDidLoad {
 	%orig;
 
-	UIViewController *vc = (UIViewController *)self;
-	UITableView *labelView = vc.view.subviews.firstObject;
-	
-	UILabel *headerLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, labelView.frame.size.width, 50)];
+	UILabel *headerLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, [[self tableView] frame].size.width, 50)];
 	NSString *headerText = [NSString stringWithFormat:@"Bea %@\nmade with ❤️ by yan", TWEAK_VERSION];
 	headerLabel.text = headerText;
 	headerLabel.numberOfLines = 0;
 	headerLabel.font = [UIFont fontWithName:@"Inter" size:10];
 	headerLabel.textAlignment = NSTextAlignmentCenter;
-	labelView.tableHeaderView = headerLabel;
+
+	[[self tableView] setTableHeaderView:headerLabel];
 }
 %end
 
@@ -160,16 +154,6 @@
 %hook UIScreen
 - (BOOL)isCaptured {
 	return NO;
-}
-%end
-
-
-%hook NSNotificationCenter
-- (void)addObserver:(id)arg0 selector:(SEL)arg1 name:(NSNotificationName)arg2 object:(id)arg3 {
-   if (arg2 == UIApplicationUserDidTakeScreenshotNotification) {
-      return;
-   }
-   %orig;
 }
 %end
 
@@ -193,18 +177,18 @@
 	%orig;
 	if ([[arg1 allKeys] containsObject:@"Authorization"] && !authorizationKey) {
 		authorizationKey = arg1[@"Authorization"];
+		[[BeaTokenManager sharedInstance] setBRAccessToken:authorizationKey];
 	}
 }
 %end
 
-
 %hook UIHostingView
 - (void)layoutSubviews {
 	%orig;
-	UIView *s = (UIView *)self;
-	for (UIView *v in s.superview.subviews) {
-		if ((v.frame.size.width <= 48 && v.frame.size.width > 32) || (([v isKindOfClass:objc_getClass("SwiftUI._UIGraphicsView")] || [v isKindOfClass:[UIView class]]) && v.frame.size.width > 350 && v.subviews.count == 0)) {
-			v.hidden = YES;
+	for (UIView *v in [[self superview] subviews]) {
+		CGFloat width = v.frame.size.width;
+		if ((width <= 48 && width > 32) || ([v isKindOfClass:[UIView class]] && width > 350 && width < 1400 && v.subviews.count == 0)) {
+			[v setHidden:YES];
 		}
 	}
 }
@@ -215,7 +199,8 @@
 - (void)viewWillAppear:(id)arg1 {
 	%orig;
 	if ([self.viewControllers.firstObject isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && [self.parentViewController isKindOfClass:objc_getClass("BeReal.HomeViewController")] && !isUnblurred) {
-		[self.parentViewController performSelector:@selector(openDebugMenu)];
+		HomeViewController *controller = (HomeViewController *)self.parentViewController;
+		[controller openDebugMenu];
 	}
 }
 %end
@@ -227,8 +212,8 @@
 		photoView = objc_getClass("RealComponents.DoublePhotoView");
 	#endif
 
-	%init(HomeViewController = objc_getClass("_TtC6BeReal18HomeViewController"),
+	%init(HomeViewController = objc_getClass("BeReal.HomeViewController"),
       DoublePhotoView = photoView,
-      SettingsViewController = objc_getClass("_TtC6BeReal22SettingsViewController"),
+      SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
       UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"));
 }

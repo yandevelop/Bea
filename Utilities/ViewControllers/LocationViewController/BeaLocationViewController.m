@@ -6,10 +6,13 @@
 
     self.mapView = [[MKMapView alloc] initWithFrame:self.view.frame];
     self.mapView.delegate = self;
+    
+    UIEdgeInsets mapInsets = self.mapView.layoutMargins;
+    mapInsets.bottom = 30;
+    self.mapView.layoutMargins = mapInsets;
     [self.view addSubview:self.mapView];
 
     self.locationManager = [CLLocationManager performSelector:@selector(sharedManager)];
-    //self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
 
     self.doneButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -40,7 +43,7 @@
         [self.doneButton.heightAnchor constraintEqualToConstant:44.0],
 
         [self.userLocationButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:20.0],
-        [self.userLocationButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
+        [self.userLocationButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-8.0],
         [self.userLocationButton.widthAnchor constraintEqualToConstant:44.0],
         [self.userLocationButton.heightAnchor constraintEqualToConstant:44.0]
     ]];

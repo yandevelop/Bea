@@ -1,13 +1,14 @@
 #import <CoreLocation/CoreLocation.h>
 #import <rootless.h>
-#import "StatusView/BeaStatusView.m"
-#import "../InfoViewController/BeaInfoViewController.m"
-#import "../UploadTask/BeaUploadTask.m"
+#import "../../Music Components/SpotifyImports.h"
 #import "../LocationViewController/BeaLocationViewController.m"
+#import "../InfoViewController/BeaInfoViewController.m"
+#import "../../UploadTask/BeaUploadTask.m"
+#import "../../Views/StatusView/BeaStatusView.m"
+#import "../../Views/SpotifyMusicView/BeaSpotifyMusicView.m"
 
 @interface BeaUploadViewController : UIViewController <UINavigationControllerDelegate, UIImagePickerControllerDelegate, UITextFieldDelegate, BeaLocationViewControllerDelegate>
 @property (nonatomic, strong) BeaLocationViewController *locationVC;
-@property (nonatomic, strong) NSString *authorizationKey;
 @property (nonatomic, strong) UIImageView *frontImageView;
 @property (nonatomic, strong) UIImageView *backImageView;
 @property (nonatomic, strong) UILabel *frontTextLabel;
@@ -30,6 +31,9 @@
 @property (nonatomic, strong) UISwitch *isLateSwitch;
 @property (nonatomic, strong) UILabel *isLateLabel;
 @property (nonatomic, assign) BOOL isLate;
-@property (nonatomic, strong) UIButton *infoButton;
-@property (nonatomic, strong) UIImageView *infoButtonImageView;
+@property (nonatomic, strong) UIButton *dropdownButton;
+@property (nonatomic, strong) UIImageView *dropdownImageView;
+@property (nonatomic, strong) NSDictionary *musicDict;
+@property (nonatomic, strong) BeaSpotifyViewController *spotifyViewController;
+@property (nonatomic, strong) BeaSpotifyMusicView *spotifyMusicView;
 @end

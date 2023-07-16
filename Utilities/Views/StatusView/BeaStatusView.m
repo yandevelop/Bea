@@ -12,14 +12,13 @@
         self.titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         self.titleLabel.font = [UIFont fontWithName:@"Inter" size:20.0];
         self.titleLabel.textColor = [UIColor whiteColor];
+        [self addSubview:self.titleLabel];
 
         self.messageLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         self.messageLabel.font = [UIFont fontWithName:@"Inter" size:11.0];
         self.messageLabel.numberOfLines = 2;
         self.messageLabel.lineBreakMode = NSLineBreakByWordWrapping;
         self.messageLabel.textColor = [UIColor whiteColor];
-        
-        [self addSubview:self.titleLabel];
         [self addSubview:self.messageLabel];
         
         self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;

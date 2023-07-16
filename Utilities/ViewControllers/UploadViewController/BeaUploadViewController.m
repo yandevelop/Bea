@@ -1,12 +1,11 @@
 #import "BeaUploadViewController.h"
+#import <objc/runtime.h>
 
 @implementation BeaUploadViewController
 
-- (instancetype)initWithAuthorization:(NSString *)authKey {
+- (instancetype)init {
     self = [super init];
     if (self) {
-        if (!authKey) return nil;
-        self.authorizationKey = authKey;
         self.locationVC = [[BeaLocationViewController alloc] init];
         self.locationVC.delegate = self;
     }
@@ -25,7 +24,12 @@
 		UIImage *beFakeLogo = [UIImage imageNamed:@"BeFake.png" inBundle:bundle compatibleWithTraitCollection:nil];
 	#endif
 
+
     self.view.backgroundColor = [UIColor blackColor];
+    self.spotifyViewController = [[BeaSpotifyViewController alloc] init];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(musicManagerDidUpdateMusic) name:@"MusicUpdated" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showMusicViewController) name:@"openSpotifyViewController" object:nil];
 
     self.titleImageView = [[UIImageView alloc] initWithImage:beFakeLogo];
     self.titleImageView.contentMode = UIViewContentModeScaleAspectFit;
@@ -43,22 +47,11 @@
     self.backButtonImageView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.backButton addSubview:self.backButtonImageView];
 
-    self.infoButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    self.infoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.infoButton addTarget:self action:@selector(infoButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.infoButton];
-
-    UIImage *infoButtonImage = [[UIImage systemImageNamed:@"info.circle.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.infoButtonImageView = [[UIImageView alloc] initWithImage:infoButtonImage];
-    self.infoButtonImageView.tintColor = [UIColor whiteColor];
-    self.infoButtonImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.infoButton addSubview:self.infoButtonImageView];
-
     self.statusView = [[BeaStatusView alloc] initWithFrame:CGRectZero];
     [self.view addSubview:self.statusView];
     self.statusView.translatesAutoresizingMaskIntoConstraints = NO;
 
-    self.frontImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.frontImageView = [[UIImageView alloc] init];
     self.frontImageView.backgroundColor = [UIColor blackColor];
     self.frontImageView.layer.borderWidth = 1.8;
     self.frontImageView.layer.cornerRadius = 8.0;
@@ -73,14 +66,14 @@
 
     [self.view addSubview:self.frontImageView];
 
-    self.frontTextLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.frontTextLabel = [[UILabel alloc] init];
     self.frontTextLabel.font = [UIFont fontWithName:@"Inter" size:14];
     self.frontTextLabel.text = @"Front image";
     self.frontTextLabel.textAlignment = NSTextAlignmentCenter;
     self.frontTextLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.frontImageView addSubview:self.frontTextLabel];
 
-    self.backImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.backImageView = [[UIImageView alloc] init];
     self.backImageView.backgroundColor = [UIColor blackColor];
     self.backImageView.layer.borderWidth = 1.8;
     self.backImageView.layer.cornerRadius = 8.0;
@@ -144,7 +137,7 @@
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
 	[self.view addSubview:self.actionButton];
 
-    self.locationLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.locationLabel = [[UILabel alloc] init];
     self.locationLabel.font = [UIFont fontWithName:@"Inter" size:22];
     self.locationLabel.text = @"Location";
     self.locationLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -168,22 +161,61 @@
     [self.isLateSwitch setOn:NO animated:NO];
     [self.view addSubview:self.isLateSwitch];
 
-    self.isLateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.isLateLabel = [[UILabel alloc] init];
     self.isLateLabel.font = [UIFont fontWithName:@"Inter" size:22];
     self.isLateLabel.text = @"Post late";
     self.isLateLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.isLateLabel];
 
+    self.spotifyMusicView = [[BeaSpotifyMusicView alloc] init];
+    [self.view addSubview:self.spotifyMusicView];
+
+    self.dropdownButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.dropdownButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.dropdownButton];
+
+    UIImage *dotImage = [[UIImage systemImageNamed:@"ellipsis"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+
+    self.dropdownImageView = [[UIImageView alloc] initWithImage:dotImage];
+    self.dropdownImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.dropdownImageView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.dropdownImageView setTintColor:[UIColor whiteColor]];
+    [self.dropdownButton addSubview:self.dropdownImageView];
+
+    NSMutableArray *actions = [[NSMutableArray alloc] init];
+    [actions addObject:[UIAction actionWithTitle:@"Show Information" image:[UIImage systemImageNamed:@"info.circle.fill"] identifier:nil handler:^(UIAction * action) {
+        BeaInfoViewController *infoViewController = [[BeaInfoViewController alloc] init];
+        [self presentViewController:infoViewController animated:YES completion:nil];
+	}]];
+
+    NSString *donationImage;
+    if (@available(iOS 16.0, *)) {
+        donationImage = @"mug.fill";
+    } else {
+        donationImage = @"dollarsign.circle.fill";
+    }
+
+    [actions addObject:[UIAction actionWithTitle:@"Buy me a ☕" image:[UIImage systemImageNamed:donationImage] identifier:nil handler:^(UIAction * action) {
+		NSURL *kofiURL = [NSURL URLWithString:@"https://ko-fi.com/yandevelop"];
+        if ([[UIApplication sharedApplication] canOpenURL:kofiURL]) {
+            [[UIApplication sharedApplication] openURL:kofiURL options:@{} completionHandler:nil];
+        }
+	}]];
+
+    UIMenu *menu = [UIMenu menuWithChildren:actions];
+    [self.dropdownButton setShowsMenuAsPrimaryAction:true];
+    [self.dropdownButton setMenu:menu];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.frontImageView.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:2 + self.view.frame.size.width / 4],
-        [self.frontImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:120],
+        [self.frontImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:110],
         [self.frontImageView.widthAnchor constraintEqualToConstant:150],
         [self.frontImageView.heightAnchor constraintEqualToConstant:200],
         [self.frontTextLabel.centerXAnchor constraintEqualToAnchor:self.frontImageView.centerXAnchor],
         [self.frontTextLabel.centerYAnchor constraintEqualToAnchor:self.frontImageView.centerYAnchor],
 
         [self.backImageView.centerXAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-2 - self.view.frame.size.width / 4],
-		[self.backImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:120],
+		[self.backImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:110],
 		[self.backImageView.widthAnchor constraintEqualToConstant:150],
 		[self.backImageView.heightAnchor constraintEqualToConstant:200],
         [self.backTextLabel.centerXAnchor constraintEqualToAnchor:self.backImageView.centerXAnchor],
@@ -237,18 +269,38 @@
         [self.backButtonImageView.widthAnchor constraintEqualToConstant:20],
         [self.backButtonImageView.heightAnchor constraintEqualToConstant:20],
 
-        [self.infoButton.centerYAnchor constraintEqualToAnchor:self.titleImageView.centerYAnchor],
-        [self.infoButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
-        [self.infoButton.widthAnchor constraintEqualToConstant:40],
-        [self.infoButton.heightAnchor constraintEqualToConstant:40],
+        [self.dropdownButton.centerYAnchor constraintEqualToAnchor:self.titleImageView.centerYAnchor],
+        [self.dropdownButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
+        [self.dropdownButton.widthAnchor constraintEqualToConstant:40],
+        [self.dropdownButton.heightAnchor constraintEqualToConstant:40],
 
-        [self.infoButtonImageView.centerYAnchor constraintEqualToAnchor:self.infoButton.centerYAnchor],
-        [self.infoButtonImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
-        [self.infoButtonImageView.widthAnchor constraintEqualToConstant:20],
-        [self.infoButtonImageView.heightAnchor constraintEqualToConstant:20]
+        [self.dropdownImageView.trailingAnchor constraintEqualToAnchor:self.dropdownButton.trailingAnchor],
+        [self.dropdownImageView.centerYAnchor constraintEqualToAnchor:self.dropdownButton.centerYAnchor],
+        [self.dropdownImageView.widthAnchor constraintEqualToAnchor:self.dropdownButton.widthAnchor multiplier:0.57],
+        [self.dropdownImageView.heightAnchor constraintEqualToAnchor:self.dropdownButton.heightAnchor multiplier:0.57],
+
+        [self.spotifyMusicView.topAnchor constraintEqualToAnchor:self.locationButton.bottomAnchor constant:14],
+        [self.spotifyMusicView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
+        [self.spotifyMusicView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
+        [self.spotifyMusicView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.spotifyMusicView.widthAnchor constraintLessThanOrEqualToAnchor:self.view.widthAnchor constant:-44],
+        [self.spotifyMusicView.heightAnchor constraintEqualToConstant:46],
     ]];
 
     [self checkForLatestVersion];
+}
+
+- (void)showMusicViewController {
+    [self presentViewController:self.spotifyViewController animated:YES completion:nil];
+}
+
+- (void)musicManagerDidUpdateMusic {
+    if ([BeaMusicManager sharedInstance].playingStatus == 0) {
+        self.musicDict = nil;
+        return;
+    }
+
+    self.musicDict = [[BeaMusicManager sharedInstance] musicDict];
 }
 
 - (void)checkForLatestVersion {
@@ -276,11 +328,6 @@
         }
     }];
     [dataTask resume];
-}
-
-- (void)infoButtonTapped {
-    BeaInfoViewController *infoViewController = [[BeaInfoViewController alloc] init];
-    [self presentViewController:infoViewController animated:YES completion:nil];
 }
 
 - (void)isLateStateChanged:(UISwitch *)sender {
@@ -465,8 +512,12 @@
         [self showErrorWithTitle:@"Missing images" message:@"Select all required images."];
         return;    
     }
+
     self.actionButton.enabled = NO;
     [self.actionButton setTitle:@"" forState:UIControlStateNormal];
+
+    // stop the api calls being made
+    [self.spotifyMusicView stopTimer];
 
     UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     spinner.center = self.actionButton.center;
@@ -474,11 +525,16 @@
     [spinner startAnimating];
 
     [UIView animateWithDuration:0.3 animations:^{
-        self.actionButton.alpha = 0.4;
+        self.actionButton.alpha = 0.5;
     }];
 
-    NSDictionary *userData = [self createDataDictionary];
+    // if the access token is not available, return
+    if (![[BeaTokenManager sharedInstance] BRAccessToken]) {
+        [self showErrorWithTitle:@"Something went wrong" message:@"2 - Please restart the app and try again."];
+        return;
+    }
 
+    NSDictionary *userData = [self createDataDictionary];
 
     // because of processing the images the spinner lags a bit
     BeaUploadTask *task = [[BeaUploadTask alloc] initWithData:userData frontImage:self.frontImage backImage:self.backImage];
@@ -522,7 +578,7 @@
         }];
     });
 
-    // reset our view and properties to initial state
+    // reset the view and properties to initial state
     self.frontImageView.image = nil;
     self.backImageView.image = nil;
     self.frontImage = nil;
@@ -538,12 +594,6 @@
 - (NSDictionary *)createDataDictionary {
     NSMutableDictionary *data = [NSMutableDictionary dictionary];
 
-    if (!self.authorizationKey) {
-        [self showErrorWithTitle:@"Something went wrong" message:@"2 - Please restart the app and try again."];
-        return nil;
-    }
-
-    [data setObject:self.authorizationKey forKey:@"authorization"];
     [data setValue:@(self.isLate) forKey:@"isLate"];
     
     if (self.caption) {
@@ -560,6 +610,17 @@
         [data setObject:latitudeNumber forKey:@"latitude"];
     }
 
+    if (self.musicDict && [BeaMusicManager sharedInstance].playingStatus == 0) {
+        [data addEntriesFromDictionary:self.musicDict];
+    }
+
     return [data copy];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"MusicUpdated" object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"openSpotifyViewController" object:nil];
+    [self.spotifyMusicView stopTimer];
+    [[BeaMusicManager sharedInstance] resetData];
 }
 @end

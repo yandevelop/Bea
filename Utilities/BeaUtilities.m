@@ -1,4 +1,5 @@
 #import "BeaUtilities.h"
+#import <Photos/Photos.h>
 
 @implementation BeaDownloader
 + (void)downloadImage:(id)sender {
@@ -26,7 +27,7 @@
 
 + (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo {
     if (error) {
-        NSLog(@"Error saving image: %@", error.localizedDescription);
+        NSLog(@"[Bea]Error saving image: %@", error.localizedDescription);
     } else {
         UIButton *button = (__bridge UIButton *)contextInfo;
 		UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:19];
@@ -72,19 +73,15 @@
     return downloadButton;
 }
 
-+ (void)toggleDownloadButtonVisibility:(UIView *)view gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
-    if (view.frame.size.width < 180 || ![view.subviews.lastObject isKindOfClass:[BeaButton class]]) return;
-
-    BeaButton *downloadButton = view.subviews.lastObject;
-
+- (void)toggleVisibilityWithGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer {
     if ((gestureRecognizer.numberOfTouches < 2 && [gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) || gestureRecognizer.state == 3) {
         if (gestureRecognizer.state == 2) return;
         [UIView animateWithDuration:0.2 animations:^{
-            downloadButton.alpha = 1;
+            self.alpha = 1;
         }];
     } else if ((gestureRecognizer.state == 1 || gestureRecognizer.state == 2)) {
         [UIView animateWithDuration:0.2 animations:^{
-            downloadButton.alpha = 0;
+            self.alpha = 0;
         }];
     }
 }

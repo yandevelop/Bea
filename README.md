@@ -10,6 +10,7 @@ Compatible with all iOS devices running iOS 14 or later.
     - Post on time, even if you're posting late
     - Set a custom location
     - Set a custom retake count
+    - Add what you're currently playing or add a song
   - Download BeReals
   - Bypass screenshot detection
 
@@ -33,6 +34,9 @@ Compatible with all iOS devices running iOS 14 or later.
 ### Jailbroken Installation
 1. Add `https://havoc.app` to your package manager or download the latest `.deb` from the [Releases](https://github.com/yandevelop/Bea/releases) tab.
 2. Install Bea using your package manager of choice.
+
+## Donations
+If you would like to support the development of this project, you can donate to me [here](https://ko-fi.com/yandevelop)
 
 ## License
 You may not copy, modify, sublicense or distribute the source code or any packages from it.

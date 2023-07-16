@@ -1,6 +1,6 @@
 @interface BeaButton : UIButton
 + (instancetype)downloadButton;
-+ (void)toggleDownloadButtonVisibility:(UIView *)view gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
+- (void)toggleVisibilityWithGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 @end
 
 @interface BeaDownloader : NSObject
