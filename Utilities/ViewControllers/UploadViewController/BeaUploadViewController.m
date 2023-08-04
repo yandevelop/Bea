@@ -610,7 +610,7 @@
         [data setObject:latitudeNumber forKey:@"latitude"];
     }
 
-    if (self.musicDict && [BeaMusicManager sharedInstance].playingStatus == 0) {
+    if (self.musicDict && [BeaMusicManager sharedInstance].playingStatus == 1) {
         [data addEntriesFromDictionary:self.musicDict];
     }
 
