@@ -89,26 +89,28 @@
 		#endif
 	}
 
-	#ifdef JAILED
-		NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"Bea" ofType:@"bundle"];
-		NSBundle *bundle = [NSBundle bundleWithPath:bundlePath];
-		UIImage *beFakeLogo = [UIImage imageWithContentsOfFile:[bundle pathForResource:@"BeFake" ofType:@"png"]];
-	#else
-		NSBundle *bundle = [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/Application Support/Bea.bundle")];
-		UIImage *beFakeLogo = [UIImage imageNamed:@"BeFake.png" inBundle:bundle compatibleWithTraitCollection:nil];
+	#ifndef NOLOGO
+		#ifdef JAILED
+			NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"Bea" ofType:@"bundle"];
+			NSBundle *bundle = [NSBundle bundleWithPath:bundlePath];
+			UIImage *beFakeLogo = [UIImage imageWithContentsOfFile:[bundle pathForResource:@"BeFake" ofType:@"png"]];
+		#else
+			NSBundle *bundle = [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/Application Support/Bea.bundle")];
+			UIImage *beFakeLogo = [UIImage imageNamed:@"BeFake.png" inBundle:bundle compatibleWithTraitCollection:nil];
+		#endif
+
+		CGSize targetSize = [[[self ibNavBarLogoImageView] image] size];
+
+		UIGraphicsBeginImageContextWithOptions(targetSize, NO, 0);
+		[beFakeLogo drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
+		UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
+		UIGraphicsEndImageContext();
+	
+		[[self ibNavBarLogoImageView] setImage:resizedImage];
 	#endif
 
-	CGSize targetSize = [[[self ibNavBarLogoImageView] image] size];
-
-	UIGraphicsBeginImageContextWithOptions(targetSize, NO, 0);
-	[beFakeLogo drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
-	UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
-	UIGraphicsEndImageContext();
-
 	UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
-	
 	[[self ibNavBarLogoImageView] addGestureRecognizer:tapGestureRecognizer];
-	[[self ibNavBarLogoImageView] setImage:resizedImage];
 	[[self ibNavBarLogoImageView] setUserInteractionEnabled:YES];
 }
 
@@ -206,11 +208,13 @@
 %end
 
 %ctor {
-	#ifdef LEGACY_SUPPORT
-		photoView = objc_getClass("BeReal.DoublePhotoView");
-	#else
+	NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+	NSComparisonResult result = [version compare:@"1.12" options:NSNumericSearch];
+	if (result == NSOrderedAscending) { 
 		photoView = objc_getClass("RealComponents.DoublePhotoView");
-	#endif
+	} else {
+		photoView = objc_getClass("RealComponents.DoubleMediaView");
+	}
 
 	%init(HomeViewController = objc_getClass("BeReal.HomeViewController"),
       DoublePhotoView = photoView,

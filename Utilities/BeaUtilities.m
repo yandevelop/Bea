@@ -7,11 +7,16 @@
 	UIView *tableContentView = button.superview.superview;
 	UIImageView *imageView = nil;
 
-    #ifdef LEGACY_SUPPORT
-        NSString *viewClass = @"BeReal.DoublePhotoView";
-    #else
-        NSString *viewClass = @"RealComponents.DoublePhotoView";
-    #endif
+    NSString *viewClass;
+
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+	NSComparisonResult result = [version compare:@"1.12" options:NSNumericSearch];
+	if (result == NSOrderedAscending) { 
+		viewClass = @"RealComponents.DoublePhotoView";
+	} else {
+		viewClass = @"RealComponents.DoubleMediaView";
+	}
+
 
 	for (UIView *view in tableContentView.subviews) {
 		if ([NSStringFromClass([view class]) isEqualToString:viewClass]) {
