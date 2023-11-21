@@ -10,6 +10,11 @@
     return sharedInstance;
 }
 
+- (NSString *)BRAccessToken {
+    _BRAccessToken = self.headers[@"Authorization"];
+    return _BRAccessToken;
+}
+
 - (void)retrieveCredentials {
     NSString *serviceName = @"com.bereal.BRMusic";
     NSString *accountName = @"Spotify.AuthStore.credentials";

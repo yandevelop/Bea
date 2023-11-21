@@ -1,29 +1,80 @@
 #import "BeaUtilities.h"
 #import <Photos/Photos.h>
 
+@implementation BeaViewResolver
++ (char *)mediaClass {
+
+    char *class;
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+	if (@available(iOS 15.0, *)) {
+        // Device is running iOS version 15 or above
+        NSComparisonResult versionComparisonResult = [version compare:@"1.12" options:NSNumericSearch];
+        if (versionComparisonResult == NSOrderedAscending) {
+            // < "1.12"
+            class = "RealComponents.DoublePhotoView";
+        } else {
+            NSComparisonResult additionalVersionCheckResult = [version compare:@"1.16" options:NSNumericSearch];
+            if (additionalVersionCheckResult == NSOrderedAscending) {
+                // < 1.16
+                class = "RealComponents.DoubleMediaView";
+            } else {
+                // > 1.16
+                class = "_TtCV14RealComponents18NewDoubleMediaView23PrimaryImageGestureView";
+            }
+        }
+    } else {
+        class = "RealComponents.DoubleMediaView";
+    }
+    return class;
+}
+@end
+
 @implementation BeaDownloader
 + (void)downloadImage:(id)sender {
 	UIButton *button = (UIButton *)sender;
-	UIView *tableContentView = button.superview.superview;
 	UIImageView *imageView = nil;
 
     NSString *viewClass;
 
     NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-	NSComparisonResult result = [version compare:@"1.12" options:NSNumericSearch];
-	if (result == NSOrderedAscending) { 
-		viewClass = @"RealComponents.DoublePhotoView";
-	} else {
-		viewClass = @"RealComponents.DoubleMediaView";
-	}
+	if (@available(iOS 15.0, *)) {
+        // Device is running iOS version 15 or above
+        NSComparisonResult versionComparisonResult = [version compare:@"1.12" options:NSNumericSearch];
+        if (versionComparisonResult == NSOrderedAscending) {
+            // < "1.12"
+            viewClass = @"RealComponents.DoublePhotoView";
+        } else {
+            NSComparisonResult additionalVersionCheckResult = [version compare:@"1.16" options:NSNumericSearch];
+            if (additionalVersionCheckResult == NSOrderedAscending) {
+                // < 1.16
+                viewClass = @"RealComponents.DoubleMediaView";
+            } else {
+                // > 1.16
+                UIView *hostView = button.superview.superview.superview;
+                UIView *nestedSubview = hostView.subviews.firstObject;
+
+                if (nestedSubview.alpha == 0) {
+                    imageView = hostView.subviews[5].subviews[0].subviews[0].subviews[0];
+                } else {
+                    imageView = nestedSubview.subviews[0].subviews[0].subviews[0];
+                }
+            }
+        }
+    } else {
+        viewClass = @"RealComponents.DoubleMediaView";
+    }
+
+    if (!imageView) {
+        UIView *tableContentView = button.superview.superview;
+        for (UIView *view in tableContentView.subviews) {
+            if ([NSStringFromClass([view class]) isEqualToString:viewClass]) {
+                imageView = view.subviews.firstObject;
+                break;
+            }
+        }
+    }
 
 
-	for (UIView *view in tableContentView.subviews) {
-		if ([NSStringFromClass([view class]) isEqualToString:viewClass]) {
-			imageView = view.subviews.firstObject;
-			break;
-		}
-	}
 	if (imageView) {
 		UIImage *imageToSave = imageView.image;
 		UIImageWriteToSavedPhotosAlbum(imageToSave, self, @selector(image:didFinishSavingWithError:contextInfo:), (__bridge void *)button);

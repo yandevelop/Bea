@@ -6,4 +6,4 @@
 @property (nonatomic, strong) UILabel *versionLabel;
 @end
 
-#define TWEAK_VERSION @"1.3.2"
+#define TWEAK_VERSION @"1.3.3"

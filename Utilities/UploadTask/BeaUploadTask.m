@@ -38,19 +38,8 @@ NSData* compressImage(UIImage *image, NSUInteger targetDataSize) {
     self = [super init];
     if (self) {
         self.userDictionary = data;
-        self.authorizationKey = [[BeaTokenManager sharedInstance] BRAccessToken];
 
-        self.headers = @{
-            @"authorization": self.authorizationKey,
-            @"accept": @"*/*",
-            @"bereal-platform": @"iOS",
-            @"bereal-os-version": @"14.7.1",
-            @"accept-Language": @"en-US;q=1.0",
-            @"user-Agent": @"BeReal/1.7.0 (AlexisBarreyat.BeReal; build:11001; iOS 14.7.1) 1.0.0/BRApiKit",
-            @"bereal-app-language": @"en-US",
-            @"bereal-device-language": @"en",
-            @"bereal-app-version" : @"1.7.0-(11001)"
-        };
+        self.headers = [[BeaTokenManager sharedInstance] headers];
 
         UIImage *resizedFrontImage = [self resizeImage:frontImage toSize:CGSizeMake(1500, 2000)];
         UIImage *resizedBackImage = [self resizeImage:backImage toSize:CGSizeMake(1500, 2000)];

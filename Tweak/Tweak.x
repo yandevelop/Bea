@@ -16,12 +16,11 @@
     
     if ([self downloadButton]) return;
 
-
 	[[self superview] setUserInteractionEnabled:YES];
 	[[[self superview] superview] setUserInteractionEnabled:YES];
 
     BeaButton *downloadButton = [BeaButton downloadButton];
-    downloadButton.layer.zPosition = 3;
+    downloadButton.layer.zPosition = 99;
 
     [self setDownloadButton:downloadButton];
     [self addSubview:downloadButton];
@@ -79,52 +78,41 @@
 
 	if (!isUnblurred && [self respondsToSelector:@selector(openDebugMenu)]) {
 		//[homeViewController performSelector:@selector(openDebugMenu)];
-		#ifndef LEGACY_SUPPORT
-			NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+		NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+		if (version.length > 0) {
 			NSComparisonResult result = [version compare:@"1.1.2" options:NSNumericSearch];
 			if (result == NSOrderedAscending) { 
 				BeaAlertView *alertView = [[BeaAlertView alloc] init];
 				[[self view] addSubview:alertView];
 			}
-		#endif
+		}
 	}
 
-	#ifndef NOLOGO
-		#ifdef JAILED
-			NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"Bea" ofType:@"bundle"];
-			NSBundle *bundle = [NSBundle bundleWithPath:bundlePath];
-			UIImage *beFakeLogo = [UIImage imageWithContentsOfFile:[bundle pathForResource:@"BeFake" ofType:@"png"]];
-		#else
-			NSBundle *bundle = [NSBundle bundleWithPath:ROOT_PATH_NS(@"/Library/Application Support/Bea.bundle")];
-			UIImage *beFakeLogo = [UIImage imageNamed:@"BeFake.png" inBundle:bundle compatibleWithTraitCollection:nil];
-		#endif
-
-		CGSize targetSize = [[[self ibNavBarLogoImageView] image] size];
-
-		UIGraphicsBeginImageContextWithOptions(targetSize, NO, 0);
-		[beFakeLogo drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
-		UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
-		UIGraphicsEndImageContext();
+	UIStackView *stackView = (UIStackView *)[[self ibNavBarLogoImageView] superview];
+	stackView.axis = UILayoutConstraintAxisHorizontal;
+	stackView.alignment = UIStackViewAlignmentCenter;
 	
-		[[self ibNavBarLogoImageView] setImage:resizedImage];
-	#endif
+	UIImageView *plusImage = [[UIImageView alloc] init];
+	plusImage.image = [UIImage systemImageNamed:@"plus.app"];
+	plusImage.translatesAutoresizingMaskIntoConstraints = NO;
+
+	[stackView addArrangedSubview:plusImage];
 
 	UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
-	[[self ibNavBarLogoImageView] addGestureRecognizer:tapGestureRecognizer];
-	[[self ibNavBarLogoImageView] setUserInteractionEnabled:YES];
+	[stackView addGestureRecognizer:tapGestureRecognizer];
+	[stackView setUserInteractionEnabled:YES];
 }
 
 %new
 - (void)handleTap:(UITapGestureRecognizer *)gestureRecognizer {
 	// display the error view here
-	if (!authorizationKey) return;
+	if (![[BeaTokenManager sharedInstance] BRAccessToken]) return;
 
 	BeaUploadViewController *beaUploadViewController = [[BeaUploadViewController alloc] init];
 	beaUploadViewController.modalPresentationStyle = UIModalPresentationFullScreen;
 	[self presentViewController:beaUploadViewController animated:YES completion:nil];
 }
 %end
-
 
 %hook CAFilter
 -(void)setValue:(id)arg1 forKey:(id)arg2 {
@@ -177,10 +165,13 @@
 %hook NSMutableURLRequest
 -(void)setAllHTTPHeaderFields:(NSDictionary *)arg1 {
 	%orig;
-	if ([[arg1 allKeys] containsObject:@"Authorization"] && !authorizationKey) {
-		authorizationKey = arg1[@"Authorization"];
-		[[BeaTokenManager sharedInstance] setBRAccessToken:authorizationKey];
-	}
+
+	if ([[arg1 allKeys] containsObject:@"Authorization"] && [[arg1 allKeys] containsObject:@"bereal-device-id"] && !headers) {
+		if ([arg1[@"Authorization"] length] > 0) {
+			headers = (NSDictionary *)arg1;
+			[[BeaTokenManager sharedInstance] setHeaders:headers];
+		}
+	} 
 }
 %end
 
@@ -208,16 +199,10 @@
 %end
 
 %ctor {
-	NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-	NSComparisonResult result = [version compare:@"1.12" options:NSNumericSearch];
-	if (result == NSOrderedAscending) { 
-		photoView = objc_getClass("RealComponents.DoublePhotoView");
-	} else {
-		photoView = objc_getClass("RealComponents.DoubleMediaView");
-	}
+	char *mediaClass = [BeaViewResolver mediaClass];
 
 	%init(HomeViewController = objc_getClass("BeReal.HomeViewController"),
-      DoublePhotoView = photoView,
+      DoublePhotoView = objc_getClass(mediaClass),
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
       UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"));
 }

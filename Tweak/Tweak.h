@@ -5,8 +5,7 @@
 #import "../Utilities/ViewControllers/UploadViewController/BeaUploadViewController.m"
 
 BOOL isUnblurred = NO;
-NSString *authorizationKey = nil;
-Class photoView;
+NSDictionary *headers;
 
 @interface CAFilter : NSObject
 @property (copy) NSString * name;

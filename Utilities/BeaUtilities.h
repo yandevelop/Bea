@@ -1,3 +1,7 @@
+@interface BeaViewResolver : NSObject
++ (char *)mediaClass;
+@end
+
 @interface BeaButton : UIButton
 + (instancetype)downloadButton;
 - (void)toggleVisibilityWithGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;

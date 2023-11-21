@@ -3,7 +3,6 @@
 
 @interface BeaUploadTask : NSObject
 - (instancetype)initWithData:(NSDictionary *)data frontImage:(UIImage *)frontImage backImage:(UIImage *)backImage;
-@property (nonatomic, strong) NSString *authorizationKey;
 @property (nonatomic, retain) NSData *frontImageData;
 @property (nonatomic, retain) NSData *backImageData;
 @property (nonatomic, strong) NSDictionary *userDictionary;

@@ -578,6 +578,10 @@
         }];
     });
 
+    [self resetProperties];
+}
+
+- (void)resetProperties {
     // reset the view and properties to initial state
     self.frontImageView.image = nil;
     self.backImageView.image = nil;
