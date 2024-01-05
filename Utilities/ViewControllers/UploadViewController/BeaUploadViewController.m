@@ -475,7 +475,7 @@
 
 // method for the caption text field
 - (void)captionTextFieldDidChange:(UITextField *)textField {
-    self.caption = textField.text;
+    self.caption = (NSString *)textField.text;
 }
 
 // method for the retake text field

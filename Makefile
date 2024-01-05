@@ -1,12 +1,12 @@
 TARGET := iphone:clang:latest:14.0
 INSTALL_TARGET_PROCESSES = BeReal
-ARCHS = arm64
+ARCHS = arm64 arm64e
 FINALPACKAGE = 1
-PACKAGE_VERSION = 1.3.3
+PACKAGE_VERSION = 1.3.4
+
+THEOS_DEVICE_IP = 192.168.102.61
 
 THEOS_PACKAGE_SCHEME = rootless
-
-export SYSROOT = $(THEOS)/sdks/iPhoneOS15.5.sdk
 
 include $(THEOS)/makefiles/common.mk
 

@@ -1,5 +1,6 @@
 #import "Tweak.h"
 
+
 %hook DoublePhotoView
 %property (nonatomic, strong) BeaButton *downloadButton;
 
@@ -49,6 +50,7 @@
 %end
 
 
+
 %hook UIAlertController
 - (void)viewWillAppear:(id)arg1 {
 	%orig;
@@ -71,6 +73,7 @@
     }
 }
 %end
+
 
 %hook HomeViewController
 - (void)viewDidLoad {
@@ -114,6 +117,7 @@
 }
 %end
 
+
 %hook CAFilter
 -(void)setValue:(id)arg1 forKey:(id)arg2 {
     // remove the blur that gets applied to the BeReals
@@ -124,6 +128,8 @@
     %orig;
 }
 %end
+
+
 
 %hook SettingsViewController
 - (void)viewDidLoad {
@@ -154,7 +160,7 @@
 	// since BeReal 1.4 the bundleIdentifier seems to have changed. Keeping both for backwards compatibility
 	if ([self.bundleIdentifier isEqualToString:@"Localisation-Localisation-resources"] || [self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
         if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"] || [key isEqualToString:@"timelineCell_blurredView_description_discoveryGlobal"]) {
-            return nil;
+            return @"";
         }
 	}
     return %orig;
@@ -165,7 +171,6 @@
 %hook NSMutableURLRequest
 -(void)setAllHTTPHeaderFields:(NSDictionary *)arg1 {
 	%orig;
-
 	if ([[arg1 allKeys] containsObject:@"Authorization"] && [[arg1 allKeys] containsObject:@"bereal-device-id"] && !headers) {
 		if ([arg1[@"Authorization"] length] > 0) {
 			headers = (NSDictionary *)arg1;
@@ -174,6 +179,7 @@
 	} 
 }
 %end
+
 
 %hook UIHostingView
 - (void)layoutSubviews {
@@ -201,8 +207,9 @@
 %ctor {
 	char *mediaClass = [BeaViewResolver mediaClass];
 
-	%init(HomeViewController = objc_getClass("BeReal.HomeViewController"),
+	%init(
       DoublePhotoView = objc_getClass(mediaClass),
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
-      UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"));
+      UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"),
+	  HomeViewController = objc_getClass("BeReal.HomeViewController"));
 }

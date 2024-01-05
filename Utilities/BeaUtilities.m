@@ -49,14 +49,23 @@
                 // < 1.16
                 viewClass = @"RealComponents.DoubleMediaView";
             } else {
-                // > 1.16
-                UIView *hostView = button.superview.superview.superview;
+                UIView *hostView;
+                if ([version compare:@"1.19.0" options:NSNumericSearch]) {
+                    // > 1.16 < 1.18
+                    hostView = button.superview.superview.superview;
+                }
+
+                // > 1.18.0
+                hostView = button.superview.superview.superview.superview;
+
                 UIView *nestedSubview = hostView.subviews.firstObject;
 
                 if (nestedSubview.alpha == 0) {
                     imageView = hostView.subviews[5].subviews[0].subviews[0].subviews[0];
+                    //imageView = [self findImageViewInViewHierarchy:hostView];
                 } else {
                     imageView = nestedSubview.subviews[0].subviews[0].subviews[0];
+                   // imageView = [self findImageViewInViewHierarchy:nestedSubview];
                 }
             }
         }
