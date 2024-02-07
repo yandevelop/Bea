@@ -26,3 +26,7 @@ NSDictionary *headers;
 
 @interface UIHostingView : UIView
 @end
+
+#ifdef JAILED
+#import "SideloadFix/SideloadedFixes.mm"
+#endif

@@ -21,6 +21,7 @@
     [self setDownloadButton:downloadButton];
     [self addSubview:downloadButton];
 
+
 	[NSLayoutConstraint activateConstraints:@[
 		[[[self downloadButton] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-11.6],
 		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
@@ -56,8 +57,11 @@
 %hook UIAlertController
 - (void)viewWillAppear:(BOOL)arg1 {
 	%orig;
+	// return early here because otherwise the app will crash on other alert controllers
+	// trying to access the 2nd index of the actions array which is (probably) not present
+	if (isUnblurred) return;
 
-	if ([self.actions[2].title isEqual:@"👀 Unblur"] && !isUnblurred) {
+	if ([self.actions[2].title isEqual:@"👀 Unblur"]) {
 		self.view.superview.hidden = YES;
 		UIAlertAction *thirdAction = self.actions[2];
 		id block = [thirdAction valueForKey:@"_handler"];
@@ -170,6 +174,7 @@
 
 %hook UIHostingView
 -(void)setUserInteractionEnabled:(BOOL)arg1 {
+	if (isUnblurred) return %orig(arg1);
 	%orig(YES);
 }
 
@@ -207,4 +212,8 @@
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
       UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"),
 	  HomeViewController = objc_getClass("BeReal.HomeViewController"));
+
+	#ifdef JAILED
+		initSideloadedFixes();
+	#endif
 }
