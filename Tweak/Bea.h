@@ -1,14 +1,14 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "../Utilities/BeaUtilities.m"
+#import "Utilities/Helpers/Helpers.h"
 #import "../Utilities/Managers/TokenManager/BeaTokenManager.m"
-#import "../Utilities/ViewControllers/UploadViewController/BeaUploadViewController.m"
+#import "../Utilities/BeFake/ViewControllers/UploadViewController/BeaUploadViewController.m"
 
 BOOL isUnblurred = NO;
 NSDictionary *headers;
 
 @interface CAFilter : NSObject
-@property (copy) NSString * name;
+@property (copy) NSString *name;
 @end
 
 @interface DoublePhotoView : UIView

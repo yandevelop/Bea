@@ -1,18 +1,13 @@
 TARGET := iphone:clang:latest:14.0
 INSTALL_TARGET_PROCESSES = BeReal
 ARCHS = arm64 arm64e
-FINALPACKAGE = 1
-PACKAGE_VERSION = 1.3.4
-
-THEOS_DEVICE_IP = 192.168.102.61
-
-THEOS_PACKAGE_SCHEME = rootless
+PACKAGE_VERSION = 1.3.5
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Bea
 
-$(TWEAK_NAME)_FILES = Tweak/Tweak.x
+$(TWEAK_NAME)_FILES = Tweak/$(TWEAK_NAME).x
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc
 $(TWEAK_NAME)_FRAMEWORKS = UIKit MapKit
 

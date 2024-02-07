@@ -1,9 +1,7 @@
-#import "Tweak.h"
-
+#import "Bea.h"
 
 %hook DoublePhotoView
 %property (nonatomic, strong) BeaButton *downloadButton;
-
 - (void)drawRect:(CGRect)rect {
 	%orig;
 
@@ -17,9 +15,6 @@
     
     if ([self downloadButton]) return;
 
-	[[self superview] setUserInteractionEnabled:YES];
-	[[[self superview] superview] setUserInteractionEnabled:YES];
-
     BeaButton *downloadButton = [BeaButton downloadButton];
     downloadButton.layer.zPosition = 99;
 
@@ -30,6 +25,15 @@
 		[[[self downloadButton] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-11.6],
 		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
 	]];
+
+	// backwards compatibility: if the user has a newer version of BeReal installed,
+	// the native unblur function doesnt exist and the the download button must be hidden manually
+	// if we remove this check on older version, this will effectively hide the whole DoublePhotoView because
+	// the native unblur function already removed all unneccessary views and the last object becomes the
+	// DoublePhotoView
+	if (isUnblurred) return;
+	// hide the "Post late button"
+	[[[[[[[self superview] superview] superview] superview] superview] subviews] lastObject].hidden = YES;
 }
 
 
@@ -49,16 +53,12 @@
 }
 %end
 
-
-
 %hook UIAlertController
-- (void)viewWillAppear:(id)arg1 {
+- (void)viewWillAppear:(BOOL)arg1 {
 	%orig;
-    if (isUnblurred) return;
-	
-    if ([self.actions[2].title isEqual:@"👀 Unblur"]) {
-		// Set the whole view to hidden
-        self.view.superview.hidden = YES;
+
+	if ([self.actions[2].title isEqual:@"👀 Unblur"] && !isUnblurred) {
+		self.view.superview.hidden = YES;
 		UIAlertAction *thirdAction = self.actions[2];
 		id block = [thirdAction valueForKey:@"_handler"];
 		if (block) {
@@ -66,11 +66,10 @@
 				void (^handler)(UIAlertAction *) = block;
 				handler(thirdAction);
 			});
+			isUnblurred = YES;
 		}
-		isUnblurred = YES;
-		// Dismiss the UIAlertController automatically
-        [self dismissViewControllerAnimated:NO completion:nil];
-    }
+		[self dismissViewControllerAnimated:NO completion:nil];
+	}
 }
 %end
 
@@ -78,18 +77,6 @@
 %hook HomeViewController
 - (void)viewDidLoad {
 	%orig;
-
-	if (!isUnblurred && [self respondsToSelector:@selector(openDebugMenu)]) {
-		//[homeViewController performSelector:@selector(openDebugMenu)];
-		NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-		if (version.length > 0) {
-			NSComparisonResult result = [version compare:@"1.1.2" options:NSNumericSearch];
-			if (result == NSOrderedAscending) { 
-				BeaAlertView *alertView = [[BeaAlertView alloc] init];
-				[[self view] addSubview:alertView];
-			}
-		}
-	}
 
 	UIStackView *stackView = (UIStackView *)[[self ibNavBarLogoImageView] superview];
 	stackView.axis = UILayoutConstraintAxisHorizontal;
@@ -120,6 +107,7 @@
 
 %hook CAFilter
 -(void)setValue:(id)arg1 forKey:(id)arg2 {
+	if (isUnblurred) return %orig;
     // remove the blur that gets applied to the BeReals
 	// this is kind of a fallback if the normal unblur function somehow fails
 	if ([arg1 isEqual:@(13)] && [self.name isEqual:@"gaussianBlur"]) {
@@ -128,7 +116,6 @@
     %orig;
 }
 %end
-
 
 
 %hook SettingsViewController
@@ -153,12 +140,11 @@
 }
 %end
 
-// return a nil string so the BeReal photo view is clear :)
+
 %hook NSBundle
 - (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName {
-	
 	// since BeReal 1.4 the bundleIdentifier seems to have changed. Keeping both for backwards compatibility
-	if ([self.bundleIdentifier isEqualToString:@"Localisation-Localisation-resources"] || [self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
+	if (!isUnblurred & [self.bundleIdentifier isEqualToString:@"Localisation-Localisation-resources"] || [self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
         if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"] || [key isEqualToString:@"timelineCell_blurredView_description_discoveryGlobal"]) {
             return @"";
         }
@@ -171,6 +157,7 @@
 %hook NSMutableURLRequest
 -(void)setAllHTTPHeaderFields:(NSDictionary *)arg1 {
 	%orig;
+
 	if ([[arg1 allKeys] containsObject:@"Authorization"] && [[arg1 allKeys] containsObject:@"bereal-device-id"] && !headers) {
 		if ([arg1[@"Authorization"] length] > 0) {
 			headers = (NSDictionary *)arg1;
@@ -182,11 +169,16 @@
 
 
 %hook UIHostingView
+-(void)setUserInteractionEnabled:(BOOL)arg1 {
+	%orig(YES);
+}
+
 - (void)layoutSubviews {
 	%orig;
+	if (isUnblurred) return;
 	for (UIView *v in [[self superview] subviews]) {
 		CGFloat width = v.frame.size.width;
-		if ((width <= 48 && width > 32) || ([v isKindOfClass:[UIView class]] && width > 350 && width < 1400 && v.subviews.count == 0)) {
+		if ((width <= 49 && width > 32) || ([v isKindOfClass:[UIView class]] && width > 350 && width < 1400 && v.subviews.count == 0)) {
 			[v setHidden:YES];
 		}
 	}
@@ -195,12 +187,15 @@
 
 
 %hook UIPageViewController
-- (void)viewWillAppear:(id)arg1 {
+- (void)viewDidLoad {
 	%orig;
-	if ([self.viewControllers.firstObject isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && [self.parentViewController isKindOfClass:objc_getClass("BeReal.HomeViewController")] && !isUnblurred) {
-		HomeViewController *controller = (HomeViewController *)self.parentViewController;
-		[controller openDebugMenu];
-	}
+	if (isUnblurred) return;
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if ([self.viewControllers.firstObject isKindOfClass:objc_getClass("BeReal.SUIFeedViewController")] && [self.parentViewController respondsToSelector:@selector(openDebugMenu)] && [self.parentViewController isKindOfClass:objc_getClass("BeReal.HomeViewController")]) {
+			HomeViewController *controller = (HomeViewController *)self.parentViewController;
+			[controller openDebugMenu];
+		}
+	});
 }
 %end
 
