@@ -1,5 +1,4 @@
 #import "Bea.h"
-#import <RemoteLog.h>
 
 static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialAccountsFanFeedPresentation27OfficialAccountsFanFeedView_";
 static NSString *corporateContentVC = @"_TtGC7SwiftUI19UIHostingControllerV26AccountProfilePresentation33OfficialAccountProfileCoordinator_";

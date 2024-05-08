@@ -2,9 +2,6 @@ TARGET := iphone:clang:latest:14.0
 INSTALL_TARGET_PROCESSES = BeReal
 ARCHS = arm64 arm64e
 
-THEOS_PACKAGE_SCHEME = rootless
-THEOS_DEVICE_IP = 192.168.178.29
-
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Bea
