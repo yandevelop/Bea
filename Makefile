@@ -6,8 +6,8 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Bea
 
-$(TWEAK_NAME)_FILES = $(shell find Tweak -name '*.xm')
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc -std=c++11 -Wno-module-import-in-extern-c
+$(TWEAK_NAME)_FILES = $(shell find Tweak -name '*.x')
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-module-import-in-extern-c
 $(TWEAK_NAME)_FRAMEWORKS = UIKit MapKit
 
 ifeq ($(JAILED), 1)
