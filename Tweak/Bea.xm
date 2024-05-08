@@ -1,8 +1,8 @@
 #import "Bea.h"
-#import <pthread.h>
 #import <RemoteLog.h>
 
 static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialAccountsFanFeedPresentation27OfficialAccountsFanFeedView_";
+static NSString *corporateContentVC = @"_TtGC7SwiftUI19UIHostingControllerV26AccountProfilePresentation33OfficialAccountProfileCoordinator_";
 
 %hook DoublePhotoView
 %property (nonatomic, strong) BeaButton *downloadButton;
@@ -17,7 +17,7 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
     }
     UIViewController *vc = (UIViewController *)responder;
     
-    if ((![vc isKindOfClass:NSClassFromString(realPeopleVC)] && ![vc isKindOfClass:NSClassFromString(@"BeReal.SUIFeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.FeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.MemoryDetailsViewController")]) || CGRectGetWidth([self frame]) < 180) return;
+    if ((![vc isKindOfClass:NSClassFromString(corporateContentVC)] && ![vc isKindOfClass:NSClassFromString(realPeopleVC)] && ![vc isKindOfClass:NSClassFromString(@"BeReal.SUIFeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.FeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.MemoryDetailsViewController")]) || CGRectGetWidth([self frame]) < 180) return;
     
     if ([self downloadButton]) return;
 
@@ -33,15 +33,24 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
 	]];
 
-	if ([self didUnblur] && [[[[self superview] superview] superview] subviews][1].hidden == YES) return;
-	// hide all other views except the DoubleMediaView
-	if ([[[self superview] subviews] count] == 0) return;
+	if ([self didUnblur]) return;
+
+	// this is a bit hacky but: if the second subview is not a GraphicsView, then the user has
+	// access to the unblurred view natively (user already posted BeReal)
+	UIView *secondSubview = [[[[self superview] superview] superview] subviews][1];
+	if (![NSStringFromClass([secondSubview class]) containsString:@"GraphicsView"]) {
+		isUnblurred = YES;
+		return;
+	}
+
+	[[[self superview] superview] setUserInteractionEnabled:YES];
+
 	for (int i = 1; i < [[[[[self superview] superview] superview] subviews] count]; i++) {
 		[[[[[self superview] superview] superview] subviews][i] setHidden:YES];
 	}
+
 	[self setDidUnblur:YES];
 }
-
 
 - (void)onMainImagePressed:(UILongPressGestureRecognizer *)gestureRecognizer {
 	%orig;
@@ -58,6 +67,7 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 	[[self downloadButton] toggleVisibilityWithGestureRecognizer:gestureRecognizer];
 }
 %end
+
 
 %hook UIAlertController
 - (void)viewWillAppear:(BOOL)arg1 {
@@ -119,7 +129,7 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 -(void)setValue:(id)arg1 forKey:(id)arg2 {
 	if (isUnblurred) return %orig;
     // remove the blur that gets applied to the BeReals
-	// this is kind of a fallback if the normal unblur function somehow fails
+	// this is kind of a fallback if the normal unblur function somehow fails (BeReal 2.0+)
 
 	if (([arg1 isEqual:@(13)] || [arg1 isEqual:@(8)]) && [self.name isEqual:@"gaussianBlur"]) {
 		return %orig(0, arg2);
@@ -179,15 +189,6 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 %end
 
 
-%hook UIHostingView
-%property (nonatomic, assign) BOOL didUnblur;
-
--(void)setUserInteractionEnabled:(BOOL)arg1 {
-	if (isUnblurred) return %orig(arg1);
-	%orig(YES);
-}
-%end
-
 %hook UIPageViewController
 - (void)viewDidLoad {
 	%orig;
@@ -201,24 +202,13 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 }
 %end
 
-// idea to get reference to BeReal.DebugMenuLaunchHandler
-// get static memory address offset from BeReal binary and base address
-// calculate the address of the BeReal.DebugMenuLaunchHandler by adding the offset to the base address on runtime
-// then call the function
-
-// update: this is not possible because BeReal.DebugMenuLaunchHandler is locked behind a Resolver.RecursiveLock object
-
-
-@interface RealPeoplePreviewDoublePhotoView : UIView
-@property (nonatomic, assign) BOOL didUnblur;
-@end
-
 %hook RealPeoplePreviewDoublePhotoView
 %property (nonatomic, assign) BOOL didUnblur;
+
 - (void)layoutSubviews {
 	%orig;
 
-	if ([self didUnblur] && [[[[[[self superview] superview] superview] superview] subviews] count] > 0);
+	if ([self didUnblur]) return;
 	for (UIView *subview in [[[[[self superview] superview] superview] superview] subviews]) {
 		if ([subview subviews].count == 0) {
 			[subview setHidden:YES];
@@ -229,14 +219,19 @@ static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialA
 }
 %end
 
+// idea to get reference to BeReal.DebugMenuLaunchHandler
+// get static memory address offset from BeReal binary and base address
+// calculate the address of the BeReal.DebugMenuLaunchHandler by adding the offset to the base address on runtime
+// then call the function
+
+// update: this is not possible because BeReal.DebugMenuLaunchHandler is locked behind a Resolver.RecursiveLock object
+
 %ctor {
-	//char *mediaClass = [BeaViewResolver mediaClass];
-	const char *mediaClass = "RealComponents.DoubleMediaViewUIKitLegacyImpl";
+	char *mediaClass = [BeaViewResolver mediaClass];
 
 	%init(
       DoublePhotoView = objc_getClass(mediaClass),
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
-      UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"),
 	  HomeViewController = objc_getClass("BeReal.HomeViewController"),
 	  RealPeoplePreviewDoublePhotoView = objc_getClass("_TtCV14RealComponents22DoubleMediaViewSwiftUI23PrimaryImageGestureView"));
 

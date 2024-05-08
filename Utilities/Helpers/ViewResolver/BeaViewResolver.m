@@ -19,6 +19,14 @@
             } else {
                 // > 1.16
                 className = (char *)"_TtCV14RealComponents18NewDoubleMediaView23PrimaryImageGestureView";
+                NSComparisonResult newVersionCheckResult = [version compare:@"2.7" options:NSNumericSearch];
+                if (newVersionCheckResult == NSOrderedAscending) {
+                    // < 2.7
+                    className = (char *)"_TtCV14RealComponents18NewDoubleMediaView23PrimaryImageGestureView";
+                } else {
+                    // > 2.7
+                    className = (char *)"RealComponents.DoubleMediaViewUIKitLegacyImpl";
+                }
             }
         }
     } else {
