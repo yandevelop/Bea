@@ -1,7 +1,13 @@
 #import "Bea.h"
+#import <pthread.h>
+#import <RemoteLog.h>
+
+NSMutableArray *mutexArray =[NSMutableArray array];
 
 %hook DoublePhotoView
 %property (nonatomic, strong) BeaButton *downloadButton;
+%property (nonatomic, assign) BOOL didUnblur;
+
 - (void)drawRect:(CGRect)rect {
 	%orig;
 
@@ -27,14 +33,13 @@
 		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
 	]];
 
-	// backwards compatibility: if the user has a newer version of BeReal installed,
-	// the native unblur function doesnt exist and the the download button must be hidden manually
-	// if we remove this check on older version, this will effectively hide the whole DoublePhotoView because
-	// the native unblur function already removed all unneccessary views and the last object becomes the
-	// DoublePhotoView
-	if (isUnblurred) return;
-	// hide the "Post late button"
-	[[[[[[[self superview] superview] superview] superview] superview] subviews] lastObject].hidden = YES;
+	if ([self didUnblur] && [[[[self superview] superview] superview] subviews][1].hidden == YES) return;
+	// hide all other views except the DoubleMediaView
+	if ([[[self superview] subviews] count] == 0) return;
+	for (int i = 1; i < [[[[[self superview] superview] superview] subviews] count]; i++) {
+		[[[[[self superview] superview] superview] subviews][i] setHidden:YES];
+	}
+	[self setDidUnblur:YES];
 }
 
 
@@ -61,6 +66,7 @@
 	// trying to access the 2nd index of the actions array which is (probably) not present
 	if (isUnblurred) return;
 
+	if ([self.actions count] < 3) return;
 	if ([self.actions[2].title isEqual:@"👀 Unblur"]) {
 		self.view.superview.hidden = YES;
 		UIAlertAction *thirdAction = self.actions[2];
@@ -149,9 +155,9 @@
 - (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName {
 	// since BeReal 1.4 the bundleIdentifier seems to have changed. Keeping both for backwards compatibility
 	if (!isUnblurred & [self.bundleIdentifier isEqualToString:@"Localisation-Localisation-resources"] || [self.bundleIdentifier isEqualToString:@"com.bereal.BRAssets"]) {
-        if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"] || [key isEqualToString:@"timelineCell_blurredView_description_discoveryGlobal"]) {
+        if ([key isEqualToString:@"timelineCell_blurredView_button"] || [key isEqualToString:@"timelineCell_blurredView_description_myFriends"] || [key isEqualToString:@"timelineCell_blurredView_title"] || [key isEqualToString:@"timelineCell_blurredView_description_discoveryGlobal"] || [key isEqualToString:@"roulette_feature_name"] || [key isEqualToString:@"resurrected_user_timeline_card_button"] || [key isEqualToString:@"general_new"]) {
             return @"";
-        }
+        }	
 	}
     return %orig;
 }
@@ -173,23 +179,13 @@
 
 
 %hook UIHostingView
+%property (nonatomic, assign) BOOL didUnblur;
+
 -(void)setUserInteractionEnabled:(BOOL)arg1 {
 	if (isUnblurred) return %orig(arg1);
 	%orig(YES);
 }
-
-- (void)layoutSubviews {
-	%orig;
-	if (isUnblurred) return;
-	for (UIView *v in [[self superview] subviews]) {
-		CGFloat width = v.frame.size.width;
-		if ((width <= 49 && width > 32) || ([v isKindOfClass:[UIView class]] && width > 350 && width < 1400 && v.subviews.count == 0)) {
-			[v setHidden:YES];
-		}
-	}
-}
 %end
-
 
 %hook UIPageViewController
 - (void)viewDidLoad {
@@ -204,8 +200,16 @@
 }
 %end
 
+// idea to get reference to BeReal.DebugMenuLaunchHandler
+// get static memory address offset from BeReal binary and base address
+// calculate the address of the BeReal.DebugMenuLaunchHandler by adding the offset to the base address on runtime
+// then call the function
+
+// update: this is not possible because BeReal.DebugMenuLaunchHandler is locked behind a Resolver.RecursiveLock object
+
 %ctor {
-	char *mediaClass = [BeaViewResolver mediaClass];
+	//char *mediaClass = [BeaViewResolver mediaClass];
+	const char *mediaClass = "RealComponents.DoubleMediaViewUIKitLegacyImpl";
 
 	%init(
       DoublePhotoView = objc_getClass(mediaClass),
