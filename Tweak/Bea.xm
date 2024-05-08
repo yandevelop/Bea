@@ -2,7 +2,7 @@
 #import <pthread.h>
 #import <RemoteLog.h>
 
-NSMutableArray *mutexArray =[NSMutableArray array];
+static NSString *realPeopleVC = @"_TtGC7SwiftUI19UIHostingControllerV35OfficialAccountsFanFeedPresentation27OfficialAccountsFanFeedView_";
 
 %hook DoublePhotoView
 %property (nonatomic, strong) BeaButton *downloadButton;
@@ -17,7 +17,7 @@ NSMutableArray *mutexArray =[NSMutableArray array];
     }
     UIViewController *vc = (UIViewController *)responder;
     
-    if ((![vc isKindOfClass:NSClassFromString(@"BeReal.SUIFeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.FeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.MemoryDetailsViewController")]) || CGRectGetWidth([self frame]) < 180) return;
+    if ((![vc isKindOfClass:NSClassFromString(realPeopleVC)] && ![vc isKindOfClass:NSClassFromString(@"BeReal.SUIFeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.FeedViewController")] && ![vc isKindOfClass:NSClassFromString(@"BeReal.MemoryDetailsViewController")]) || CGRectGetWidth([self frame]) < 180) return;
     
     if ([self downloadButton]) return;
 
@@ -120,7 +120,8 @@ NSMutableArray *mutexArray =[NSMutableArray array];
 	if (isUnblurred) return %orig;
     // remove the blur that gets applied to the BeReals
 	// this is kind of a fallback if the normal unblur function somehow fails
-	if ([arg1 isEqual:@(13)] && [self.name isEqual:@"gaussianBlur"]) {
+
+	if (([arg1 isEqual:@(13)] || [arg1 isEqual:@(8)]) && [self.name isEqual:@"gaussianBlur"]) {
 		return %orig(0, arg2);
 	}
     %orig;
@@ -207,6 +208,27 @@ NSMutableArray *mutexArray =[NSMutableArray array];
 
 // update: this is not possible because BeReal.DebugMenuLaunchHandler is locked behind a Resolver.RecursiveLock object
 
+
+@interface RealPeoplePreviewDoublePhotoView : UIView
+@property (nonatomic, assign) BOOL didUnblur;
+@end
+
+%hook RealPeoplePreviewDoublePhotoView
+%property (nonatomic, assign) BOOL didUnblur;
+- (void)layoutSubviews {
+	%orig;
+
+	if ([self didUnblur] && [[[[[[self superview] superview] superview] superview] subviews] count] > 0);
+	for (UIView *subview in [[[[[self superview] superview] superview] superview] subviews]) {
+		if ([subview subviews].count == 0) {
+			[subview setHidden:YES];
+		}
+	}
+
+	[self setDidUnblur:YES];
+}
+%end
+
 %ctor {
 	//char *mediaClass = [BeaViewResolver mediaClass];
 	const char *mediaClass = "RealComponents.DoubleMediaViewUIKitLegacyImpl";
@@ -215,7 +237,8 @@ NSMutableArray *mutexArray =[NSMutableArray array];
       DoublePhotoView = objc_getClass(mediaClass),
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
       UIHostingView = objc_getClass("_TtC7SwiftUIP33_A34643117F00277B93DEBAB70EC0697116_UIInheritedView"),
-	  HomeViewController = objc_getClass("BeReal.HomeViewController"));
+	  HomeViewController = objc_getClass("BeReal.HomeViewController"),
+	  RealPeoplePreviewDoublePhotoView = objc_getClass("_TtCV14RealComponents22DoubleMediaViewSwiftUI23PrimaryImageGestureView"));
 
 	#ifdef JAILED
 		initSideloadedFixes();

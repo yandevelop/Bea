@@ -5,14 +5,13 @@ PACKAGE_VERSION = 1.3.6
 DEBUG=1
 
 THEOS_PACKAGE_SCHEME = rootless
-THEOS_DEVICE_IP = localhost
-THEOS_DEVICE_PORT = 2222
+THEOS_DEVICE_IP = 192.168.178.29
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Bea
 
-$(TWEAK_NAME)_FILES = Tweak/$(TWEAK_NAME).xm
+$(TWEAK_NAME)_FILES = $(shell find Tweak -name '*.xm')
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -std=c++11 -Wno-module-import-in-extern-c
 $(TWEAK_NAME)_FRAMEWORKS = UIKit MapKit
 
