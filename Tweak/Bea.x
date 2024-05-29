@@ -26,7 +26,6 @@ static NSString *corporateContentVC = @"_TtGC7SwiftUI19UIHostingControllerV26Acc
     [self setDownloadButton:downloadButton];
     [self addSubview:downloadButton];
 
-
 	[NSLayoutConstraint activateConstraints:@[
 		[[[self downloadButton] trailingAnchor] constraintEqualToAnchor:[self trailingAnchor] constant:-11.6],
 		[[[self downloadButton] bottomAnchor] constraintEqualToAnchor:[self topAnchor] constant:47.333]
@@ -110,6 +109,25 @@ static NSString *corporateContentVC = @"_TtGC7SwiftUI19UIHostingControllerV26Acc
 	UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
 	[stackView addGestureRecognizer:tapGestureRecognizer];
 	[stackView setUserInteractionEnabled:YES];
+
+	[self showVersionAlert];
+}
+
+%new
+- (void)showVersionAlert {
+	// get current version
+	NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+
+	// check if version is greater or equal to 2.15.0
+
+	if ([version compare:@"2.15.0" options:NSNumericSearch] != NSOrderedAscending) {
+		// create a alert controller
+		UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Unsupported" message:@"You are using a version of BeReal that is not yet supported by Bea. It is recommended to use BeReal versions 2.14.2 or smaller for Bea to work properly." preferredStyle:UIAlertControllerStyleAlert];
+		
+		UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+		[alertController addAction:okAction];
+		[self presentViewController:alertController animated:YES completion:nil];
+	}
 }
 
 %new
@@ -233,8 +251,4 @@ static NSString *corporateContentVC = @"_TtGC7SwiftUI19UIHostingControllerV26Acc
       SettingsViewController = objc_getClass("BeReal.SettingsViewController"),
 	  HomeViewController = objc_getClass("BeReal.HomeViewController"),
 	  RealPeoplePreviewDoublePhotoView = objc_getClass("_TtCV14RealComponents22DoubleMediaViewSwiftUI23PrimaryImageGestureView"));
-
-	#ifdef JAILED
-		initSideloadedFixes();
-	#endif
 }

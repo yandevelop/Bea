@@ -11,7 +11,7 @@ $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-module-import-in-extern-c
 $(TWEAK_NAME)_FRAMEWORKS = UIKit MapKit
 
 ifeq ($(JAILED), 1)
-$(TWEAK_NAME)_FILES += fishhook/fishhook.c
+$(TWEAK_NAME)_FILES += fishhook/fishhook.c SideloadFix/SideloadFix.xm
 $(TWEAK_NAME)_CFLAGS += -D JAILED=1
 endif
 

@@ -1,6 +1,26 @@
-#import "SideloadedFixes.h"
+#import "SideloadFix.h"
 
 // All credits go to https://github.com/level3tjg/RedditSideloadFix and https://github.com/opa334/IGSideloadFix
+
+%hook NSBundle
+
+- (NSString *)bundleIdentifier {
+  NSArray *address = [NSThread callStackReturnAddresses];
+  Dl_info info;
+  if (dladdr((void *)[address[2] longLongValue], &info) == 0) return %orig;
+  NSString *path = [NSString stringWithUTF8String:info.dli_fname];
+  if ([path hasPrefix:NSBundle.mainBundle.bundlePath]) return BR_BUNDLE_ID;
+  return %orig;
+}
+
+- (id)objectForInfoDictionaryKey:(NSString *)key {
+  if ([key isEqualToString:@"CFBundleIdentifier"]) return BR_BUNDLE_ID;
+  if ([key isEqualToString:@"CFBundleDisplayName"] || [key isEqualToString:@"CFBundleName"]) return BR_NAME;
+  return %orig;
+}
+
+%end
+
 
 NSString* keychainAccessGroup;
 NSURL* fakeGroupContainerURL;
@@ -24,6 +44,9 @@ void createDirectoryIfNotExists(NSURL* URL) {
 }
 
 @end
+
+// Thanks to level3tjg! https://github.com/level3tjg/TwitchAdBlock/blob/master/Sideloaded.x
+
 
 static void loadKeychainAccessGroup() {
   NSDictionary* dummyItem = @{
@@ -101,4 +124,9 @@ static void initSideloadedFixes() {
     Method originalMethod = class_getInstanceMethod([NSFileManager class], @selector(containerURLForSecurityApplicationGroupIdentifier:));
     Method swizzledMethod = class_getInstanceMethod([NSFileManager class], @selector(swizzled_containerURLForSecurityApplicationGroupIdentifier:));
     method_exchangeImplementations(originalMethod, swizzledMethod);
+}
+
+%ctor {
+  %init;
+  initSideloadedFixes();
 }

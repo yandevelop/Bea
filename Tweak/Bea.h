@@ -20,6 +20,7 @@ NSDictionary *headers;
 @interface HomeViewController : UIViewController
 @property (nonatomic, retain) UIImageView *ibNavBarLogoImageView;
 - (void)openDebugMenu;
+- (void)showVersionAlert;
 @end
 
 @interface SettingsViewController : UIViewController
@@ -29,7 +30,3 @@ NSDictionary *headers;
 @interface RealPeoplePreviewDoublePhotoView : UIView
 @property (nonatomic, assign) BOOL didUnblur;
 @end
-
-#ifdef JAILED
-#import "SideloadFix/SideloadedFixes.mm"
-#endif
